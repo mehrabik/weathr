@@ -6,4 +6,6 @@ pub mod types;
 
 pub use client::WeatherClient;
 pub use open_meteo::OpenMeteoProvider;
-pub use types::{WeatherCondition, WeatherData, WeatherLocation, WeatherUnits};
+pub use types::{
+    RainIntensity, SnowIntensity, WeatherCondition, WeatherData, WeatherLocation, WeatherUnits,
+};

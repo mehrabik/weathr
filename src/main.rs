@@ -6,14 +6,8 @@ mod scene;
 mod weather;
 
 use animation::{
-    birds::BirdSystem,
-    clouds::CloudSystem,
-    moon::MoonSystem,
-    raindrops::{RainIntensity, RaindropSystem},
-    snow::{SnowIntensity, SnowSystem},
-    stars::StarSystem,
-    sunny::SunnyAnimation,
-    thunderstorm::ThunderstormSystem,
+    birds::BirdSystem, clouds::CloudSystem, moon::MoonSystem, raindrops::RaindropSystem,
+    snow::SnowSystem, stars::StarSystem, sunny::SunnyAnimation, thunderstorm::ThunderstormSystem,
     AnimationController,
 };
 use clap::Parser;
@@ -24,12 +18,16 @@ use scene::WorldScene;
 use std::io;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tokio::sync::mpsc;
 use weather::{
-    OpenMeteoProvider, WeatherClient, WeatherCondition, WeatherData, WeatherLocation, WeatherUnits,
+    OpenMeteoProvider, RainIntensity, SnowIntensity, WeatherClient, WeatherCondition, WeatherData,
+    WeatherLocation, WeatherUnits,
 };
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(300);
 const FRAME_DELAY: Duration = Duration::from_millis(500);
+const TARGET_FPS: u64 = 30;
+const FRAME_DURATION: Duration = Duration::from_millis(1000 / TARGET_FPS);
 
 #[derive(Parser)]
 #[command(version, about = "Terminal-based ASCII weather application", long_about = None)]
@@ -84,7 +82,7 @@ async fn run_app(
     let mut animation_controller = AnimationController::new();
 
     let provider = Arc::new(OpenMeteoProvider::new());
-    let weather_client = WeatherClient::new(provider, Duration::from_secs(300));
+    let weather_client = WeatherClient::new(provider, REFRESH_INTERVAL);
 
     let location = WeatherLocation {
         latitude: config.location.latitude,
@@ -93,7 +91,24 @@ async fn run_app(
     };
     let units = WeatherUnits::default();
 
-    let mut last_update = Instant::now();
+    let (tx, mut rx) = mpsc::channel(1);
+
+    if simulate_condition.is_none() {
+        let client = weather_client.clone();
+        let loc = location.clone();
+        let u = units.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let result = client.get_current_weather(&loc, &u).await;
+                if tx.send(result).await.is_err() {
+                    break;
+                }
+                tokio::time::sleep(REFRESH_INTERVAL).await;
+            }
+        });
+    }
+
     let mut last_frame_time = Instant::now();
     let mut current_weather = None;
     let mut weather_error: Option<String> = None;
@@ -102,6 +117,10 @@ async fn run_app(
     let mut is_thunderstorm = false;
     let mut is_cloudy = false;
     let mut is_day = true;
+
+    let mut loading_frame = 0;
+    let loading_chars = ['|', '/', '-', '\\'];
+    let mut last_loading_update = Instant::now();
 
     let (term_width, term_height) = renderer.get_size();
     world_scene.update_size(term_width, term_height);
@@ -115,46 +134,13 @@ async fn run_app(
 
     if let Some(ref condition_str) = simulate_condition {
         let simulated_condition = parse_weather_condition(condition_str);
-        is_thunderstorm = matches!(
-            simulated_condition,
-            WeatherCondition::Thunderstorm | WeatherCondition::ThunderstormHail
-        );
-        is_snowing = matches!(
-            simulated_condition,
-            WeatherCondition::Snow | WeatherCondition::SnowGrains | WeatherCondition::SnowShowers
-        );
-        is_raining = !is_thunderstorm
-            && !is_snowing
-            && matches!(
-                simulated_condition,
-                WeatherCondition::Drizzle
-                    | WeatherCondition::Rain
-                    | WeatherCondition::RainShowers
-                    | WeatherCondition::FreezingRain
-            );
+        is_thunderstorm = simulated_condition.is_thunderstorm();
+        is_snowing = simulated_condition.is_snowing();
+        is_raining = simulated_condition.is_raining() && !is_thunderstorm;
 
-        let rain_intensity = match simulated_condition {
-            WeatherCondition::Drizzle => RainIntensity::Drizzle,
-            WeatherCondition::Rain | WeatherCondition::RainShowers => RainIntensity::Light,
-            WeatherCondition::FreezingRain => RainIntensity::Heavy,
-            WeatherCondition::Thunderstorm => RainIntensity::Heavy,
-            WeatherCondition::ThunderstormHail => RainIntensity::Storm,
-            _ => RainIntensity::Light,
-        };
-        raindrop_system.set_intensity(rain_intensity);
-
-        let snow_intensity = match simulated_condition {
-            WeatherCondition::SnowGrains => SnowIntensity::Light,
-            WeatherCondition::SnowShowers => SnowIntensity::Medium,
-            WeatherCondition::Snow => SnowIntensity::Heavy,
-            _ => SnowIntensity::Light,
-        };
-        snow_system.set_intensity(snow_intensity);
-
-        is_cloudy = matches!(
-            simulated_condition,
-            WeatherCondition::PartlyCloudy | WeatherCondition::Cloudy | WeatherCondition::Overcast
-        );
+        raindrop_system.set_intensity(simulated_condition.rain_intensity());
+        snow_system.set_intensity(simulated_condition.snow_intensity());
+        is_cloudy = simulated_condition.is_cloudy();
 
         is_day = true;
 
@@ -163,10 +149,7 @@ async fn run_app(
             temperature: 20.0,
             apparent_temperature: 19.0,
             humidity: 65.0,
-            precipitation: if matches!(
-                simulated_condition,
-                WeatherCondition::Rain | WeatherCondition::Drizzle | WeatherCondition::RainShowers
-            ) {
+            precipitation: if simulated_condition.is_raining() {
                 2.5
             } else {
                 0.0
@@ -183,55 +166,16 @@ async fn run_app(
     }
 
     loop {
-        if simulate_condition.is_none()
-            && (current_weather.is_none() || last_update.elapsed() >= REFRESH_INTERVAL)
-        {
-            match weather_client.get_current_weather(&location, &units).await {
+        if let Ok(result) = rx.try_recv() {
+            match result {
                 Ok(weather) => {
-                    is_thunderstorm = matches!(
-                        weather.condition,
-                        WeatherCondition::Thunderstorm | WeatherCondition::ThunderstormHail
-                    );
-                    is_snowing = matches!(
-                        weather.condition,
-                        WeatherCondition::Snow | WeatherCondition::SnowGrains | WeatherCondition::SnowShowers
-                    );
-                    is_raining = !is_thunderstorm
-                        && !is_snowing
-                        && matches!(
-                            weather.condition,
-                            WeatherCondition::Drizzle
-                                | WeatherCondition::Rain
-                                | WeatherCondition::RainShowers
-                                | WeatherCondition::FreezingRain
-                        );
+                    is_thunderstorm = weather.condition.is_thunderstorm();
+                    is_snowing = weather.condition.is_snowing();
+                    is_raining = weather.condition.is_raining() && !is_thunderstorm;
 
-                    let rain_intensity = match weather.condition {
-                        WeatherCondition::Drizzle => RainIntensity::Drizzle,
-                        WeatherCondition::Rain | WeatherCondition::RainShowers => {
-                            RainIntensity::Light
-                        }
-                        WeatherCondition::FreezingRain => RainIntensity::Heavy,
-                        WeatherCondition::Thunderstorm => RainIntensity::Heavy,
-                        WeatherCondition::ThunderstormHail => RainIntensity::Storm,
-                        _ => RainIntensity::Light,
-                    };
-                    raindrop_system.set_intensity(rain_intensity);
-
-                    let snow_intensity = match weather.condition {
-                        WeatherCondition::SnowGrains => SnowIntensity::Light,
-                        WeatherCondition::SnowShowers => SnowIntensity::Medium,
-                        WeatherCondition::Snow => SnowIntensity::Heavy,
-                        _ => SnowIntensity::Light,
-                    };
-                    snow_system.set_intensity(snow_intensity);
-
-                    is_cloudy = matches!(
-                        weather.condition,
-                        WeatherCondition::PartlyCloudy
-                            | WeatherCondition::Cloudy
-                            | WeatherCondition::Overcast
-                    );
+                    raindrop_system.set_intensity(weather.condition.rain_intensity());
+                    snow_system.set_intensity(weather.condition.snow_intensity());
+                    is_cloudy = weather.condition.is_cloudy();
                     is_day = weather.is_day;
 
                     if let Some(phase) = weather.moon_phase {
@@ -245,7 +189,6 @@ async fn run_app(
                     weather_error = Some(format!("Error fetching weather: {}", e));
                 }
             }
-            last_update = Instant::now();
         }
 
         renderer.update_size()?;
@@ -272,7 +215,12 @@ async fn run_app(
                 WeatherCondition::ThunderstormHail => "Thunderstorm with Hail",
             }
         } else {
-            "Loading..."
+            // Update loading frame
+            if last_loading_update.elapsed() >= Duration::from_millis(100) {
+                loading_frame = (loading_frame + 1) % loading_chars.len();
+                last_loading_update = Instant::now();
+            }
+            "Loading"
         };
 
         let weather_info = if let Some(ref error) = weather_error {
@@ -287,8 +235,8 @@ async fn run_app(
             )
         } else {
             format!(
-                "Weather: Loading... | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                location.latitude, location.longitude
+                "Weather: Loading... {} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                loading_chars[loading_frame], location.latitude, location.longitude
             )
         };
 
@@ -320,7 +268,7 @@ async fn run_app(
                     WeatherCondition::Clear | WeatherCondition::PartlyCloudy
                 )
             } else {
-                !is_raining && !is_thunderstorm && !is_cloudy && !is_snowing
+                false
             }
         } else {
             false
@@ -359,7 +307,7 @@ async fn run_app(
 
         renderer.flush()?;
 
-        if event::poll(Duration::from_millis(33))? {
+        if event::poll(FRAME_DURATION)? {
             if let Event::Key(key_event) = event::read()? {
                 match key_event.code {
                     KeyCode::Char('q') | KeyCode::Char('Q') => break,

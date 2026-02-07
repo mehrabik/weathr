@@ -27,7 +27,6 @@ impl AsciiDisplay {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scene::ground::Ground;
     use crate::scene::house::House;
 
     #[test]

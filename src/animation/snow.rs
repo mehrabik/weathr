@@ -1,13 +1,7 @@
 use crate::render::TerminalRenderer;
+use crate::weather::types::SnowIntensity;
 use crossterm::style::Color;
 use std::io;
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum SnowIntensity {
-    Light,
-    Medium,
-    Heavy,
-}
 
 struct Snowflake {
     x: f32,

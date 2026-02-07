@@ -4,6 +4,7 @@ use crate::weather::types::{
 };
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::time::Duration;
 
 pub struct OpenMeteoProvider {
     client: reqwest::Client,
@@ -34,8 +35,14 @@ struct CurrentWeather {
 
 impl OpenMeteoProvider {
     pub fn new() -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(10))
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
         Self {
-            client: reqwest::Client::new(),
+            client,
             base_url: "https://api.open-meteo.com/v1/forecast".to_string(),
         }
     }

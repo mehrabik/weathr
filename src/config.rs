@@ -35,6 +35,17 @@ impl Default for Location {
 
 impl Config {
     pub fn load() -> Result<Self, String> {
+        // try local config.toml
+        if let Ok(cwd) = std::env::current_dir() {
+            let local_config = cwd.join("config.toml");
+            if local_config.exists() {
+                let config = Self::load_from_path(&local_config)?;
+                config.validate()?;
+                return Ok(config);
+            }
+        }
+
+        // try XDG config
         let config_path = Self::get_config_path()?;
 
         if !config_path.exists() {

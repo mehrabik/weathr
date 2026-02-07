@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
+#[derive(Clone)]
 pub struct WeatherClient {
     provider: Arc<dyn WeatherProvider>,
     cache: Arc<RwLock<Option<CachedWeather>>>,

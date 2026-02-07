@@ -1,14 +1,7 @@
 use crate::render::TerminalRenderer;
+use crate::weather::types::RainIntensity;
 use crossterm::style::Color;
 use std::io;
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum RainIntensity {
-    Drizzle,
-    Light,
-    Heavy,
-    Storm,
-}
 
 struct Raindrop {
     x: f32,

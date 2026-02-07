@@ -20,6 +20,76 @@ pub enum WeatherCondition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RainIntensity {
+    Drizzle,
+    Light,
+    Heavy,
+    Storm,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SnowIntensity {
+    Light,
+    Medium,
+    Heavy,
+}
+
+impl WeatherCondition {
+    pub fn rain_intensity(&self) -> RainIntensity {
+        match self {
+            Self::Drizzle => RainIntensity::Drizzle,
+            Self::Rain | Self::RainShowers => RainIntensity::Light,
+            Self::FreezingRain => RainIntensity::Heavy,
+            Self::Thunderstorm => RainIntensity::Heavy,
+            Self::ThunderstormHail => RainIntensity::Storm,
+            _ => RainIntensity::Light,
+        }
+    }
+
+    pub fn snow_intensity(&self) -> SnowIntensity {
+        match self {
+            Self::SnowGrains => SnowIntensity::Light,
+            Self::SnowShowers => SnowIntensity::Medium,
+            Self::Snow => SnowIntensity::Heavy,
+            _ => SnowIntensity::Light,
+        }
+    }
+
+    pub fn is_raining(&self) -> bool {
+        match self {
+            Self::Drizzle
+            | Self::Rain
+            | Self::RainShowers
+            | Self::FreezingRain
+            | Self::Thunderstorm
+            | Self::ThunderstormHail => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_snowing(&self) -> bool {
+        match self {
+            Self::Snow | Self::SnowGrains | Self::SnowShowers => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_thunderstorm(&self) -> bool {
+        match self {
+            Self::Thunderstorm | Self::ThunderstormHail => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_cloudy(&self) -> bool {
+        match self {
+            Self::PartlyCloudy | Self::Cloudy | Self::Overcast => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TemperatureUnit {
     Celsius,

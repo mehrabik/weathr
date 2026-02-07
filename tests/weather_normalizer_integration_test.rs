@@ -48,6 +48,7 @@ fn test_weather_normalizer_integration_all_wmo_codes() {
             pressure: 1013.0,
             visibility: Some(10000.0),
             is_day: 1,
+            moon_phase: None,
             timestamp: "2024-01-01T12:00".to_string(),
         };
 
@@ -74,6 +75,7 @@ fn test_weather_normalizer_integration_day_night() {
         pressure: 1013.0,
         visibility: Some(10000.0),
         is_day: 1,
+        moon_phase: None,
         timestamp: "2024-01-01T12:00".to_string(),
     };
 
@@ -89,6 +91,7 @@ fn test_weather_normalizer_integration_day_night() {
         pressure: 1013.0,
         visibility: Some(10000.0),
         is_day: 0,
+        moon_phase: None,
         timestamp: "2024-01-01T00:00".to_string(),
     };
 
@@ -113,6 +116,7 @@ fn test_weather_normalizer_integration_clear_conditions() {
         pressure: 1015.0,
         visibility: Some(15000.0),
         is_day: 1,
+        moon_phase: None,
         timestamp: "2024-06-15T14:00".to_string(),
     };
 
@@ -140,6 +144,7 @@ fn test_weather_normalizer_integration_rainy_conditions() {
         pressure: 1005.0,
         visibility: Some(3000.0),
         is_day: 1,
+        moon_phase: None,
         timestamp: "2024-03-20T10:00".to_string(),
     };
 
@@ -164,6 +169,7 @@ fn test_weather_normalizer_integration_snowy_conditions() {
         pressure: 1010.0,
         visibility: Some(1000.0),
         is_day: 0,
+        moon_phase: None,
         timestamp: "2024-01-10T22:00".to_string(),
     };
 
