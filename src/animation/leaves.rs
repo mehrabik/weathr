@@ -175,12 +175,7 @@ impl FallingLeaves {
 
             if x >= 0 && y >= 0 && x < self.terminal_width as i16 && y < self.terminal_height as i16
             {
-                renderer.render_line_colored(
-                    x as u16,
-                    y as u16,
-                    &leaf.get_character().to_string(),
-                    leaf.color,
-                )?;
+                renderer.render_char(x as u16, y as u16, leaf.get_character(), leaf.color)?;
             }
         }
         Ok(())

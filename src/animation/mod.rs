@@ -15,7 +15,7 @@ use crossterm::style::Color;
 use std::io;
 
 pub trait Animation {
-    fn get_frame(&self, frame_number: usize) -> Vec<String>;
+    fn get_frame(&self, frame_number: usize) -> &[String];
     fn frame_count(&self) -> usize;
 
     fn get_color(&self) -> Color {
@@ -45,7 +45,7 @@ impl AnimationController {
     ) -> io::Result<()> {
         let frame = animation.get_frame(self.current_frame);
         let color = animation.get_color();
-        renderer.render_centered_colored(&frame, y_offset, color)
+        renderer.render_centered_colored(frame, y_offset, color)
     }
 
     #[allow(dead_code)]

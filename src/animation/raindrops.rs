@@ -3,6 +3,8 @@ use crate::weather::types::RainIntensity;
 use crossterm::style::Color;
 use std::io;
 
+const MAX_SPLASHES: usize = 100;
+
 struct Raindrop {
     x: f32,
     y: f32,
@@ -179,6 +181,10 @@ impl RaindropSystem {
         });
 
         self.splashes.extend(new_splashes);
+
+        if self.splashes.len() > MAX_SPLASHES {
+            self.splashes.drain(0..(self.splashes.len() - MAX_SPLASHES));
+        }
 
         self.splashes.retain_mut(|splash| {
             splash.timer += 1;

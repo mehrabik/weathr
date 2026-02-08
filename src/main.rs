@@ -5,10 +5,9 @@ mod scene;
 mod weather;
 
 use animation::{
-    birds::BirdSystem, chimney::ChimneySmoke, clouds::CloudSystem, fireflies::FireflySystem,
-    leaves::FallingLeaves, moon::MoonSystem, raindrops::RaindropSystem, snow::SnowSystem,
-    stars::StarSystem, sunny::SunnyAnimation, thunderstorm::ThunderstormSystem,
-    AnimationController,
+    AnimationController, birds::BirdSystem, chimney::ChimneySmoke, clouds::CloudSystem,
+    fireflies::FireflySystem, leaves::FallingLeaves, moon::MoonSystem, raindrops::RaindropSystem,
+    snow::SnowSystem, stars::StarSystem, sunny::SunnyAnimation, thunderstorm::ThunderstormSystem,
 };
 use clap::Parser;
 use config::Config;
@@ -132,6 +131,9 @@ async fn run_app(
     let loading_chars = ['|', '/', '-', '\\'];
     let mut last_loading_update = Instant::now();
 
+    let mut cached_weather_info = String::new();
+    let mut weather_info_needs_update = true;
+
     let (term_width, term_height) = renderer.get_size();
     world_scene.update_size(term_width, term_height);
     let mut raindrop_system = RaindropSystem::new(term_width, term_height, RainIntensity::Light);
@@ -189,17 +191,16 @@ async fn run_app(
                     raindrop_system.set_intensity(weather.condition.rain_intensity());
                     snow_system.set_intensity(weather.condition.snow_intensity());
                     is_cloudy = weather.condition.is_cloudy();
-                    is_day = weather.is_day;
 
-                    if let Some(phase) = weather.moon_phase {
-                        moon_system.set_phase(phase);
-                    }
+                    is_day = weather.is_day;
 
                     current_weather = Some(weather);
                     weather_error = None;
+                    weather_info_needs_update = true;
                 }
                 Err(e) => {
                     weather_error = Some(format!("Error fetching weather: {}", e));
+                    weather_info_needs_update = true;
                 }
             }
         }
@@ -310,13 +311,13 @@ async fn run_app(
         let condition_text = if let Some(ref weather) = current_weather {
             match weather.condition {
                 WeatherCondition::Clear => "Clear",
-                WeatherCondition::PartlyCloudy => "Partly Cloudy",
                 WeatherCondition::Cloudy => "Cloudy",
+                WeatherCondition::PartlyCloudy => "Partly Cloudy",
                 WeatherCondition::Overcast => "Overcast",
                 WeatherCondition::Fog => "Fog",
                 WeatherCondition::Drizzle => "Drizzle",
-                WeatherCondition::Rain => "Rain",
                 WeatherCondition::FreezingRain => "Freezing Rain",
+                WeatherCondition::Rain => "Rain",
                 WeatherCondition::Snow => "Snow",
                 WeatherCondition::SnowGrains => "Snow Grains",
                 WeatherCondition::RainShowers => "Rain Showers",
@@ -325,44 +326,47 @@ async fn run_app(
                 WeatherCondition::ThunderstormHail => "Thunderstorm with Hail",
             }
         } else {
-            // Update loading frame
             if last_loading_update.elapsed() >= Duration::from_millis(100) {
                 loading_frame = (loading_frame + 1) % loading_chars.len();
                 last_loading_update = Instant::now();
+                weather_info_needs_update = true;
             }
             "Loading"
         };
 
-        let weather_info = if let Some(ref error) = weather_error {
-            format!(
-                "{} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                error, location.latitude, location.longitude
-            )
-        } else if let Some(ref weather) = current_weather {
-            format!(
-                "Weather: {} | Temp: {:.1}°C | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                condition_text, weather.temperature, location.latitude, location.longitude
-            )
-        } else {
-            format!(
-                "Weather: Loading... {} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                loading_chars[loading_frame], location.latitude, location.longitude
-            )
-        };
+        if weather_info_needs_update {
+            cached_weather_info = if let Some(ref error) = weather_error {
+                format!(
+                    "{} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                    error, location.latitude, location.longitude
+                )
+            } else if let Some(ref weather) = current_weather {
+                format!(
+                    "Weather: {} | Temp: {:.1}°C | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                    condition_text, weather.temperature, location.latitude, location.longitude
+                )
+            } else {
+                format!(
+                    "Weather: Loading... {} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                    loading_chars[loading_frame], location.latitude, location.longitude
+                )
+            };
+            weather_info_needs_update = false;
+        }
 
-        renderer.render_line_colored(2, 1, &weather_info, crossterm::style::Color::Cyan)?;
+        renderer.render_line_colored(2, 1, &cached_weather_info, crossterm::style::Color::Cyan)?;
 
         renderer.flush()?;
 
-        if event::poll(FRAME_DURATION)? {
-            if let Event::Key(key_event) = event::read()? {
-                match key_event.code {
-                    KeyCode::Char('q') | KeyCode::Char('Q') => break,
-                    KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                        break
-                    }
-                    _ => {}
+        if event::poll(FRAME_DURATION)?
+            && let Event::Key(key_event) = event::read()?
+        {
+            match key_event.code {
+                KeyCode::Char('q') | KeyCode::Char('Q') => break,
+                KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    break;
                 }
+                _ => {}
             }
         }
 

@@ -98,32 +98,31 @@ impl StarSystem {
             renderer.render_char(star.x, star.y, ch, color)?;
         }
 
-        if let Some(ref star) = self.shooting_star {
-            if star.active {
-                let head_x = star.x as i16;
-                let head_y = star.y as i16;
+        if let Some(ref star) = self.shooting_star
+            && star.active
+        {
+            let head_x = star.x as i16;
+            let head_y = star.y as i16;
 
-                if head_x >= 0
-                    && head_x < self.terminal_width as i16
-                    && head_y >= 0
-                    && head_y < self.terminal_height as i16
+            if head_x >= 0
+                && head_x < self.terminal_width as i16
+                && head_y >= 0
+                && head_y < self.terminal_height as i16
+            {
+                renderer.render_char(head_x as u16, head_y as u16, '*', Color::White)?;
+            }
+
+            for i in 1..star.length {
+                let trail_x = (star.x - (star.speed_x * i as f32)) as i16;
+                let trail_y = (star.y - (star.speed_y * i as f32)) as i16;
+
+                if trail_x >= 0
+                    && trail_x < self.terminal_width as i16
+                    && trail_y >= 0
+                    && trail_y < self.terminal_height as i16
                 {
-                    renderer.render_char(head_x as u16, head_y as u16, '*', Color::White)?;
-                }
-
-                // Trail
-                for i in 1..star.length {
-                    let trail_x = (star.x - (star.speed_x * i as f32)) as i16;
-                    let trail_y = (star.y - (star.speed_y * i as f32)) as i16;
-
-                    if trail_x >= 0
-                        && trail_x < self.terminal_width as i16
-                        && trail_y >= 0
-                        && trail_y < self.terminal_height as i16
-                    {
-                        let ch = if i == 1 { '+' } else { '.' };
-                        renderer.render_char(trail_x as u16, trail_y as u16, ch, Color::White)?;
-                    }
+                    let ch = if i == 1 { '+' } else { '.' };
+                    renderer.render_char(trail_x as u16, trail_y as u16, ch, Color::White)?;
                 }
             }
         }

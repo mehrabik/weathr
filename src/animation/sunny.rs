@@ -59,8 +59,8 @@ impl SunnyAnimation {
 }
 
 impl Animation for SunnyAnimation {
-    fn get_frame(&self, frame_number: usize) -> Vec<String> {
-        self.frames[frame_number % self.frames.len()].clone()
+    fn get_frame(&self, frame_number: usize) -> &[String] {
+        &self.frames[frame_number % self.frames.len()]
     }
 
     fn frame_count(&self) -> usize {

@@ -105,7 +105,6 @@ impl WeatherProvider for OpenMeteoProvider {
             .map_err(|e| e.to_string())?;
         let data: OpenMeteoResponse = response.json().await.map_err(|e| e.to_string())?;
 
-        // Hardcoded Full Moon (Bulan Purnama) as requested by user
         let moon_phase = Some(0.5);
 
         Ok(WeatherProviderResponse {

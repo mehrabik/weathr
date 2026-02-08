@@ -2,6 +2,8 @@ use crate::render::TerminalRenderer;
 use crossterm::style::Color;
 use std::io;
 
+const MAX_PARTICLES: usize = 200;
+
 struct SmokeParticle {
     x: f32,
     y: f32,
@@ -69,7 +71,7 @@ impl ChimneySmoke {
         self.particles.retain(|p| p.is_alive() && p.y >= 0.0);
 
         self.spawn_counter += 1;
-        if self.spawn_counter >= self.spawn_rate {
+        if self.spawn_counter >= self.spawn_rate && self.particles.len() < MAX_PARTICLES {
             self.spawn_counter = 0;
             self.particles
                 .push(SmokeParticle::new(chimney_x, chimney_y));
@@ -89,12 +91,7 @@ impl ChimneySmoke {
                     _ => '·',
                 };
 
-                renderer.render_line_colored(
-                    x as u16,
-                    y as u16,
-                    &display_char.to_string(),
-                    particle.get_color(),
-                )?;
+                renderer.render_char(x as u16, y as u16, display_char, particle.get_color())?;
             }
         }
         Ok(())

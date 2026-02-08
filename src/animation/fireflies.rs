@@ -150,10 +150,10 @@ impl FireflySystem {
                     && x < self.terminal_width as i16
                     && y < self.terminal_height as i16
                 {
-                    renderer.render_line_colored(
+                    renderer.render_char(
                         x as u16,
                         y as u16,
-                        &firefly.get_character().to_string(),
+                        firefly.get_character(),
                         firefly.get_color(),
                     )?;
                 }

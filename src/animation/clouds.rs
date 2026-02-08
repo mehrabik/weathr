@@ -1,6 +1,9 @@
 use crate::render::TerminalRenderer;
 use crossterm::style::Color;
 use std::io;
+use std::sync::OnceLock;
+
+static CLOUD_SHAPES: OnceLock<Vec<Vec<String>>> = OnceLock::new();
 
 struct Cloud {
     x: f32,
@@ -38,12 +41,12 @@ impl CloudSystem {
     }
 
     fn create_random_cloud(width: u16, height: u16, random_x: bool) -> Cloud {
-        let shapes = Self::create_cloud_shapes();
+        let shapes = CLOUD_SHAPES.get_or_init(Self::create_cloud_shapes);
 
         let shape_idx = (rand::random::<u32>() as usize) % shapes.len();
         let shape = shapes[shape_idx].clone();
 
-        let y_range = height / 3; // Top 1/3 of screen
+        let y_range = height / 3;
         let y = (rand::random::<u16>() % std::cmp::max(1, y_range)) as f32;
 
         let x = if random_x {

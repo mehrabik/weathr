@@ -2,6 +2,8 @@ use crate::render::TerminalRenderer;
 use crossterm::style::Color;
 use std::io;
 
+const MAX_BOLTS: usize = 10;
+
 #[derive(Clone, Copy, PartialEq)]
 enum LightningState {
     Forming,
@@ -91,8 +93,12 @@ impl ThunderstormSystem {
         self.bolts.push(LightningBolt {
             segments,
             age: 0,
-            max_age: 10, // Frames to persist
+            max_age: 10,
         });
+
+        if self.bolts.len() > MAX_BOLTS {
+            self.bolts.drain(0..(self.bolts.len() - MAX_BOLTS));
+        }
     }
 
     pub fn update(&mut self, terminal_width: u16, terminal_height: u16) {
