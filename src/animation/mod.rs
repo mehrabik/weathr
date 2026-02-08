@@ -1,6 +1,7 @@
 pub mod birds;
 pub mod chimney;
 pub mod clouds;
+pub mod fireflies;
 pub mod moon;
 pub mod raindrops;
 pub mod snow;

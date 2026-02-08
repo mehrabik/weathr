@@ -6,7 +6,7 @@ mod scene;
 mod weather;
 
 use animation::{
-    birds::BirdSystem, chimney::ChimneySmoke, clouds::CloudSystem, moon::MoonSystem, raindrops::RaindropSystem,
+    birds::BirdSystem, chimney::ChimneySmoke, clouds::CloudSystem, fireflies::FireflySystem, moon::MoonSystem, raindrops::RaindropSystem,
     snow::SnowSystem, stars::StarSystem, sunny::SunnyAnimation, thunderstorm::ThunderstormSystem,
     AnimationController,
 };
@@ -39,6 +39,13 @@ struct Cli {
         help = "Simulate weather condition (clear, rain, drizzle, snow, etc.)"
     )]
     simulate: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        help = "Simulate night time (for testing moon, stars, fireflies)"
+    )]
+    night: bool,
 }
 
 #[tokio::main]
@@ -65,7 +72,7 @@ async fn main() -> io::Result<()> {
     let mut renderer = TerminalRenderer::new()?;
     renderer.init()?;
 
-    let result = run_app(&config, &mut renderer, cli.simulate).await;
+    let result = run_app(&config, &mut renderer, cli.simulate, cli.night).await;
 
     renderer.cleanup()?;
 
@@ -76,6 +83,7 @@ async fn run_app(
     config: &Config,
     renderer: &mut TerminalRenderer,
     simulate_condition: Option<String>,
+    simulate_night: bool,
 ) -> io::Result<()> {
     let mut world_scene = WorldScene::new(0, 0); // Will update size later
     let sunny_animation = SunnyAnimation::new();
@@ -132,6 +140,7 @@ async fn run_app(
     let mut star_system = StarSystem::new(term_width, term_height);
     let mut moon_system = MoonSystem::new(term_width, term_height);
     let mut chimney_smoke = ChimneySmoke::new();
+    let mut firefly_system = FireflySystem::new(term_width, term_height);
 
     if let Some(ref condition_str) = simulate_condition {
         let simulated_condition = parse_weather_condition(condition_str);
@@ -143,7 +152,7 @@ async fn run_app(
         snow_system.set_intensity(simulated_condition.snow_intensity());
         is_cloudy = simulated_condition.is_cloudy();
 
-        is_day = true;
+        is_day = !simulate_night;
 
         current_weather = Some(WeatherData {
             condition: simulated_condition,
@@ -160,7 +169,7 @@ async fn run_app(
             cloud_cover: 50.0,
             pressure: 1013.0,
             visibility: Some(10000.0),
-            is_day: true,
+            is_day: !simulate_night,
             moon_phase: Some(0.5), // Simulated Full Moon
             timestamp: "simulated".to_string(),
         });
@@ -248,6 +257,19 @@ async fn run_app(
             star_system.render(renderer)?;
             moon_system.update(term_width, term_height);
             moon_system.render(renderer)?;
+
+            // Fireflies appear on warm, clear nights
+            if let Some(ref weather) = current_weather {
+                let is_warm = weather.temperature > 15.0;
+                let is_clear_night = matches!(
+                    weather.condition,
+                    WeatherCondition::Clear | WeatherCondition::PartlyCloudy
+                );
+                if is_warm && is_clear_night && !is_raining && !is_thunderstorm && !is_snowing {
+                    firefly_system.update(term_width, term_height);
+                    firefly_system.render(renderer)?;
+                }
+            }
         }
 
         if is_cloudy || (!is_raining && !is_thunderstorm && !is_snowing) {
