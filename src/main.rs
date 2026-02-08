@@ -210,51 +210,6 @@ async fn run_app(
 
         renderer.clear()?;
 
-        let condition_text = if let Some(ref weather) = current_weather {
-            match weather.condition {
-                WeatherCondition::Clear => "Clear",
-                WeatherCondition::PartlyCloudy => "Partly Cloudy",
-                WeatherCondition::Cloudy => "Cloudy",
-                WeatherCondition::Overcast => "Overcast",
-                WeatherCondition::Fog => "Fog",
-                WeatherCondition::Drizzle => "Drizzle",
-                WeatherCondition::Rain => "Rain",
-                WeatherCondition::FreezingRain => "Freezing Rain",
-                WeatherCondition::Snow => "Snow",
-                WeatherCondition::SnowGrains => "Snow Grains",
-                WeatherCondition::RainShowers => "Rain Showers",
-                WeatherCondition::SnowShowers => "Snow Showers",
-                WeatherCondition::Thunderstorm => "Thunderstorm",
-                WeatherCondition::ThunderstormHail => "Thunderstorm with Hail",
-            }
-        } else {
-            // Update loading frame
-            if last_loading_update.elapsed() >= Duration::from_millis(100) {
-                loading_frame = (loading_frame + 1) % loading_chars.len();
-                last_loading_update = Instant::now();
-            }
-            "Loading"
-        };
-
-        let weather_info = if let Some(ref error) = weather_error {
-            format!(
-                "{} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                error, location.latitude, location.longitude
-            )
-        } else if let Some(ref weather) = current_weather {
-            format!(
-                "Weather: {} | Temp: {:.1}°C | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                condition_text, weather.temperature, location.latitude, location.longitude
-            )
-        } else {
-            format!(
-                "Weather: Loading... {} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
-                loading_chars[loading_frame], location.latitude, location.longitude
-            )
-        };
-
-        renderer.render_line_colored(2, 1, &weather_info, crossterm::style::Color::Cyan)?;
-
         if !is_day {
             star_system.update(term_width, term_height);
             star_system.render(renderer)?;
@@ -350,6 +305,52 @@ async fn run_app(
             falling_leaves.update(term_width, term_height);
             falling_leaves.render(renderer)?;
         }
+
+        // Render Weather HUD (always on top)
+        let condition_text = if let Some(ref weather) = current_weather {
+            match weather.condition {
+                WeatherCondition::Clear => "Clear",
+                WeatherCondition::PartlyCloudy => "Partly Cloudy",
+                WeatherCondition::Cloudy => "Cloudy",
+                WeatherCondition::Overcast => "Overcast",
+                WeatherCondition::Fog => "Fog",
+                WeatherCondition::Drizzle => "Drizzle",
+                WeatherCondition::Rain => "Rain",
+                WeatherCondition::FreezingRain => "Freezing Rain",
+                WeatherCondition::Snow => "Snow",
+                WeatherCondition::SnowGrains => "Snow Grains",
+                WeatherCondition::RainShowers => "Rain Showers",
+                WeatherCondition::SnowShowers => "Snow Showers",
+                WeatherCondition::Thunderstorm => "Thunderstorm",
+                WeatherCondition::ThunderstormHail => "Thunderstorm with Hail",
+            }
+        } else {
+            // Update loading frame
+            if last_loading_update.elapsed() >= Duration::from_millis(100) {
+                loading_frame = (loading_frame + 1) % loading_chars.len();
+                last_loading_update = Instant::now();
+            }
+            "Loading"
+        };
+
+        let weather_info = if let Some(ref error) = weather_error {
+            format!(
+                "{} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                error, location.latitude, location.longitude
+            )
+        } else if let Some(ref weather) = current_weather {
+            format!(
+                "Weather: {} | Temp: {:.1}°C | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                condition_text, weather.temperature, location.latitude, location.longitude
+            )
+        } else {
+            format!(
+                "Weather: Loading... {} | Location: {:.2}°N, {:.2}°E | Press 'q' to quit",
+                loading_chars[loading_frame], location.latitude, location.longitude
+            )
+        };
+
+        renderer.render_line_colored(2, 1, &weather_info, crossterm::style::Color::Cyan)?;
 
         renderer.flush()?;
 
