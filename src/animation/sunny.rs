@@ -2,8 +2,6 @@ use super::Animation;
 
 pub struct SunnyAnimation {
     frames: Vec<Vec<String>>,
-    #[allow(dead_code)]
-    frame_delay: u64,
 }
 
 impl SunnyAnimation {
@@ -17,7 +15,6 @@ impl SunnyAnimation {
 
         Self {
             frames,
-            frame_delay: 500,
         }
     }
 
@@ -69,10 +66,6 @@ impl Animation for SunnyAnimation {
 
     fn frame_count(&self) -> usize {
         self.frames.len()
-    }
-
-    fn frame_delay_ms(&self) -> u64 {
-        self.frame_delay
     }
 }
 

@@ -1,6 +1,5 @@
 mod animation;
 mod config;
-mod display;
 mod render;
 mod scene;
 mod weather;

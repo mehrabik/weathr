@@ -11,14 +11,16 @@ pub mod sunny;
 pub mod thunderstorm;
 
 use crate::render::TerminalRenderer;
+use crossterm::style::Color;
 use std::io;
 
 pub trait Animation {
     fn get_frame(&self, frame_number: usize) -> Vec<String>;
     fn frame_count(&self) -> usize;
 
-    #[allow(dead_code)]
-    fn frame_delay_ms(&self) -> u64;
+    fn get_color(&self) -> Color {
+        Color::Reset
+    }
 }
 
 pub struct AnimationController {
@@ -42,7 +44,8 @@ impl AnimationController {
         y_offset: u16,
     ) -> io::Result<()> {
         let frame = animation.get_frame(self.current_frame);
-        renderer.render_centered(&frame, y_offset)
+        let color = animation.get_color();
+        renderer.render_centered_colored(&frame, y_offset, color)
     }
 
     #[allow(dead_code)]

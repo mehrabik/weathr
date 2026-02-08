@@ -26,7 +26,4 @@ pub trait WeatherProvider: Send + Sync {
         location: &WeatherLocation,
         units: &WeatherUnits,
     ) -> Result<WeatherProviderResponse, String>;
-
-    #[allow(dead_code)]
-    fn get_name(&self) -> &'static str;
 }

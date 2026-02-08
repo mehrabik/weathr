@@ -11,8 +11,6 @@ struct Snowflake {
     sway_offset: f32,
     character: char,
     color: Color,
-    #[allow(dead_code)]
-    z_index: u8,
 }
 
 pub struct SnowSystem {
@@ -81,7 +79,6 @@ impl SnowSystem {
             } else {
                 Color::DarkGrey
             },
-            z_index,
         });
     }
 

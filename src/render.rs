@@ -77,7 +77,12 @@ impl TerminalRenderer {
         Ok(())
     }
 
-    pub fn render_centered(&mut self, lines: &[String], start_row: u16) -> io::Result<()> {
+    pub fn render_centered_colored(
+        &mut self,
+        lines: &[String],
+        start_row: u16,
+        color: Color,
+    ) -> io::Result<()> {
         let max_width = lines.iter().map(|l| l.len()).max().unwrap_or(0);
         let start_col = if self.width as usize > max_width {
             (self.width as usize - max_width) / 2
@@ -95,7 +100,7 @@ impl TerminalRenderer {
                         if buffer_idx < self.buffer.len() {
                             self.buffer[buffer_idx] = Cell {
                                 character: ch,
-                                color: Color::Reset,
+                                color,
                             };
                         }
                     }

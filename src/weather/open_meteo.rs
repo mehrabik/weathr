@@ -124,10 +124,6 @@ impl WeatherProvider for OpenMeteoProvider {
             timestamp: data.current.time,
         })
     }
-
-    fn get_name(&self) -> &'static str {
-        "Open-Meteo"
-    }
 }
 
 #[cfg(test)]

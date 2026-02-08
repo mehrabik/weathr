@@ -63,18 +63,6 @@ async fn test_weather_client_integration_cache_invalidation() {
 }
 
 #[tokio::test]
-async fn test_weather_client_integration_provider_name() {
-    let provider = Arc::new(OpenMeteoProvider::new());
-    let client = WeatherClient::new(provider, Duration::from_secs(60));
-
-    assert_eq!(
-        client.get_provider_name(),
-        "Open-Meteo",
-        "Provider name should be correct"
-    );
-}
-
-#[tokio::test]
 async fn test_weather_client_integration_realistic_weather_ranges() {
     let provider = Arc::new(OpenMeteoProvider::new());
     let client = WeatherClient::new(provider, Duration::from_secs(60));

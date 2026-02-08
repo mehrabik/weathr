@@ -61,11 +61,6 @@ impl WeatherClient {
         let mut cache = self.cache.write().await;
         *cache = None;
     }
-
-    #[allow(dead_code)]
-    pub fn get_provider_name(&self) -> &'static str {
-        self.provider.get_name()
-    }
 }
 
 #[cfg(test)]
@@ -73,13 +68,6 @@ mod tests {
     use super::*;
     use crate::weather::open_meteo::OpenMeteoProvider;
     use std::time::Duration;
-
-    #[test]
-    fn test_client_creation() {
-        let provider = Arc::new(OpenMeteoProvider::new());
-        let client = WeatherClient::new(provider, Duration::from_secs(60));
-        assert_eq!(client.get_provider_name(), "Open-Meteo");
-    }
 
     #[tokio::test]
     async fn test_cache_invalidation() {
