@@ -66,6 +66,13 @@ impl RaindropSystem {
         self.wind_x = base_wind * direction_multiplier;
     }
 
+    pub fn set_wind(&mut self, speed_kmh: f32, direction_deg: f32) {
+        let speed_factor = speed_kmh / 40.0;
+        let direction_rad = direction_deg.to_radians();
+        let x_component = -direction_rad.sin();
+        self.wind_x = speed_factor * x_component;
+    }
+
     fn spawn_drop(&mut self, rng: &mut impl Rng) {
         let x = (rng.random::<u32>() % (self.terminal_width as u32 * 2)) as f32
             - (self.terminal_width as f32 * 0.5);

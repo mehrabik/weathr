@@ -53,6 +53,13 @@ impl SnowSystem {
         self.wind_x = base_wind * direction_multiplier;
     }
 
+    pub fn set_wind(&mut self, speed_kmh: f32, direction_deg: f32) {
+        let speed_factor = speed_kmh / 20.0;
+        let direction_rad = direction_deg.to_radians();
+        let x_component = -direction_rad.sin();
+        self.wind_x = speed_factor * x_component;
+    }
+
     fn spawn_flake(&mut self, rng: &mut impl Rng) {
         // Spawn across a wider area to account for wind blowing them in
         let x = (rng.random::<u32>() % (self.terminal_width as u32 * 3)) as f32

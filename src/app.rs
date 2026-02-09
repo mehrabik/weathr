@@ -80,7 +80,7 @@ impl App {
         };
 
         let mut state = AppState::new(location, config.location.hide);
-        let animations = AnimationManager::new(term_width, term_height, show_leaves);
+        let mut animations = AnimationManager::new(term_width, term_height, show_leaves);
         let scene = WorldScene::new(term_width, term_height);
 
         let (tx, rx) = mpsc::channel(1);
@@ -104,8 +104,12 @@ impl App {
                 } else {
                     0.0
                 },
-                wind_speed: 10.0,
-                wind_direction: 180.0,
+                wind_speed: if simulated_condition.is_thunderstorm() {
+                    45.0
+                } else {
+                    10.0
+                },
+                wind_direction: 225.0,
                 cloud_cover: 50.0,
                 pressure: 1013.0,
                 visibility: Some(10000.0),
@@ -114,7 +118,16 @@ impl App {
                 timestamp: "simulated".to_string(),
             };
 
+            let rain_intensity = weather.condition.rain_intensity();
+            let snow_intensity = weather.condition.snow_intensity();
+
+            let wind_speed = weather.wind_speed;
+            let wind_direction = weather.wind_direction;
+
             state.update_weather(weather);
+            animations.update_rain_intensity(rain_intensity);
+            animations.update_snow_intensity(snow_intensity);
+            animations.update_wind(wind_speed as f32, wind_direction as f32);
         } else {
             let provider = Arc::new(OpenMeteoProvider::new());
             let weather_client = WeatherClient::new(provider, REFRESH_INTERVAL);
@@ -148,11 +161,15 @@ impl App {
                         let rain_intensity = weather.condition.rain_intensity();
                         let snow_intensity = weather.condition.snow_intensity();
                         let fog_intensity = weather.condition.fog_intensity();
+                        let wind_speed = weather.wind_speed;
+                        let wind_direction = weather.wind_direction;
 
                         self.state.update_weather(weather);
                         self.animations.update_rain_intensity(rain_intensity);
                         self.animations.update_snow_intensity(snow_intensity);
                         self.animations.update_fog_intensity(fog_intensity);
+                        self.animations
+                            .update_wind(wind_speed as f32, wind_direction as f32);
                     }
                     Err(_) => {
                         if self.state.current_weather.is_none() {
@@ -160,12 +177,16 @@ impl App {
                             let rain_intensity = offline_weather.condition.rain_intensity();
                             let snow_intensity = offline_weather.condition.snow_intensity();
                             let fog_intensity = offline_weather.condition.fog_intensity();
+                            let wind_speed = offline_weather.wind_speed;
+                            let wind_direction = offline_weather.wind_direction;
 
                             self.state.update_weather(offline_weather);
                             self.state.set_offline_mode(true);
                             self.animations.update_rain_intensity(rain_intensity);
                             self.animations.update_snow_intensity(snow_intensity);
                             self.animations.update_fog_intensity(fog_intensity);
+                            self.animations
+                                .update_wind(wind_speed as f32, wind_direction as f32);
                         } else {
                             self.state.set_offline_mode(true);
                         }
