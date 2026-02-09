@@ -16,6 +16,46 @@ const REFRESH_INTERVAL: Duration = Duration::from_secs(300);
 const INPUT_POLL_FPS: u64 = 30;
 const FRAME_DURATION: Duration = Duration::from_millis(1000 / INPUT_POLL_FPS);
 
+fn generate_offline_weather() -> WeatherData {
+    use chrono::{Local, Timelike};
+    use rand::RngExt;
+
+    let mut rng = rand::rng();
+
+    let now = Local::now();
+    let hour = now.hour();
+    let is_day = (6..18).contains(&hour);
+
+    let conditions = [
+        WeatherCondition::Clear,
+        WeatherCondition::PartlyCloudy,
+        WeatherCondition::Cloudy,
+        WeatherCondition::Rain,
+    ];
+
+    let condition = conditions[rng.random_range(0..conditions.len())];
+
+    WeatherData {
+        condition,
+        temperature: rng.random_range(10.0..25.0),
+        apparent_temperature: rng.random_range(10.0..25.0),
+        humidity: rng.random_range(40.0..80.0),
+        precipitation: if condition.is_raining() {
+            rng.random_range(1.0..5.0)
+        } else {
+            0.0
+        },
+        wind_speed: rng.random_range(5.0..15.0),
+        wind_direction: rng.random_range(0.0..360.0),
+        cloud_cover: rng.random_range(20.0..80.0),
+        pressure: rng.random_range(1000.0..1020.0),
+        visibility: Some(10000.0),
+        is_day,
+        moon_phase: Some(0.5),
+        timestamp: now.format("%Y-%m-%dT%H:%M:%S").to_string(),
+    }
+}
+
 pub struct App {
     state: AppState,
     animations: AnimationManager,
@@ -112,9 +152,21 @@ impl App {
                         self.animations.update_snow_intensity(snow_intensity);
                         self.animations.update_fog_intensity(fog_intensity);
                     }
-                    Err(e) => {
-                        self.state
-                            .set_weather_error(format!("Error fetching weather: {}", e));
+                    Err(_) => {
+                        if self.state.current_weather.is_none() {
+                            let offline_weather = generate_offline_weather();
+                            let rain_intensity = offline_weather.condition.rain_intensity();
+                            let snow_intensity = offline_weather.condition.snow_intensity();
+                            let fog_intensity = offline_weather.condition.fog_intensity();
+
+                            self.state.update_weather(offline_weather);
+                            self.state.set_offline_mode(true);
+                            self.animations.update_rain_intensity(rain_intensity);
+                            self.animations.update_snow_intensity(snow_intensity);
+                            self.animations.update_fog_intensity(fog_intensity);
+                        } else {
+                            self.state.set_offline_mode(true);
+                        }
                     }
                 }
             }

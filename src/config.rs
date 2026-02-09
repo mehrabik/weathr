@@ -33,7 +33,7 @@ impl Default for Location {
         Self {
             latitude: default_latitude(),
             longitude: default_longitude(),
-            auto: false,
+            auto: true,
             hide: false,
         }
     }
@@ -56,7 +56,8 @@ impl Config {
 
         if !config_path.exists() {
             eprintln!("Config file not found at {:?}", config_path);
-            eprintln!("Using default location: Berlin (52.52°N, 13.41°E)");
+            eprintln!("Auto-detecting location via IP...");
+            eprintln!("(Set auto = false in config to use Berlin as default)");
             return Ok(Self::default());
         }
 

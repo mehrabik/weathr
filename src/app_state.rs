@@ -4,6 +4,7 @@ use std::time::Instant;
 pub struct AppState {
     pub current_weather: Option<WeatherData>,
     pub weather_error: Option<String>,
+    pub is_offline: bool,
     pub weather_conditions: WeatherConditions,
     pub loading_state: LoadingState,
     pub cached_weather_info: String,
@@ -17,6 +18,7 @@ impl AppState {
         Self {
             current_weather: None,
             weather_error: None,
+            is_offline: false,
             weather_conditions: WeatherConditions::default(),
             loading_state: LoadingState::new(),
             cached_weather_info: String::new(),
@@ -37,11 +39,12 @@ impl AppState {
 
         self.current_weather = Some(weather);
         self.weather_error = None;
+        self.is_offline = false;
         self.weather_info_needs_update = true;
     }
 
-    pub fn set_weather_error(&mut self, error: String) {
-        self.weather_error = Some(error);
+    pub fn set_offline_mode(&mut self, offline: bool) {
+        self.is_offline = offline;
         self.weather_info_needs_update = true;
     }
 
@@ -89,13 +92,16 @@ impl AppState {
             )
         };
 
+        let offline_indicator = if self.is_offline { " | OFFLINE" } else { "" };
+
         self.cached_weather_info = if let Some(ref error) = self.weather_error {
             format!("{} | {} | Press 'q' to quit", error, location_str)
         } else if let Some(ref weather) = self.current_weather {
             format!(
-                "Weather: {} | Temp: {:.1}°C | {} | Press 'q' to quit",
+                "Weather: {} | Temp: {:.1}°C{} | {} | Press 'q' to quit",
                 self.get_condition_text(),
                 weather.temperature,
+                offline_indicator,
                 location_str
             )
         } else {
