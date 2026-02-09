@@ -62,3 +62,13 @@ weathr
 ## License
 
 GPL-3.0-or-later
+
+## Credits
+
+### ASCII Art
+- **Source**: https://www.asciiart.eu/
+- **House**: Joan G. Stark
+- **Sun**: Hayley Jane Wakenshaw (Flump)
+- **Moon**: Joan G. Stark
+
+*Note: If any ASCII art is uncredited or misattributed, it belongs to the original owner.*
