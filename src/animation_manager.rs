@@ -1,15 +1,15 @@
 use crate::animation::{
-    AnimationController, birds::BirdSystem, chimney::ChimneySmoke, clouds::CloudSystem,
-    fireflies::FireflySystem, fog::FogSystem, leaves::FallingLeaves, moon::MoonSystem,
-    raindrops::RaindropSystem, snow::SnowSystem, stars::StarSystem, sunny::SunnyAnimation,
-    thunderstorm::ThunderstormSystem,
+    AnimationController, airplanes::AirplaneSystem, birds::BirdSystem, chimney::ChimneySmoke,
+    clouds::CloudSystem, fireflies::FireflySystem, fog::FogSystem, leaves::FallingLeaves,
+    moon::MoonSystem, raindrops::RaindropSystem, snow::SnowSystem, stars::StarSystem,
+    sunny::SunnyAnimation, thunderstorm::ThunderstormSystem,
 };
 use crate::app_state::AppState;
 use crate::render::TerminalRenderer;
 use crate::scene::WorldScene;
 use crate::scene::house::House;
-use crate::weather::WeatherConditions;
-use crate::weather::{FogIntensity, RainIntensity, SnowIntensity};
+use crate::weather::{FogIntensity, RainIntensity, SnowIntensity, WeatherConditions};
+use crossterm::style::Color;
 use std::io;
 use std::time::{Duration, Instant};
 
@@ -22,6 +22,7 @@ pub struct AnimationManager {
     thunderstorm_system: ThunderstormSystem,
     cloud_system: CloudSystem,
     bird_system: BirdSystem,
+    airplane_system: AirplaneSystem,
     star_system: StarSystem,
     moon_system: MoonSystem,
     chimney_smoke: ChimneySmoke,
@@ -42,6 +43,7 @@ impl AnimationManager {
             thunderstorm_system: ThunderstormSystem::new(term_width, term_height),
             cloud_system: CloudSystem::new(term_width, term_height),
             bird_system: BirdSystem::new(term_width, term_height),
+            airplane_system: AirplaneSystem::new(term_width, term_height),
             star_system: StarSystem::new(term_width, term_height),
             moon_system: MoonSystem::new(term_width, term_height),
             chimney_smoke: ChimneySmoke::new(),
@@ -91,22 +93,13 @@ impl AnimationManager {
             }
         }
 
-        if conditions.is_cloudy
-            || (!conditions.is_raining && !conditions.is_thunderstorm && !conditions.is_snowing)
+        if !conditions.is_raining
+            && !conditions.is_thunderstorm
+            && !conditions.is_snowing
+            && conditions.is_day
         {
-            if conditions.is_cloudy {
-                self.cloud_system.update(term_width, term_height);
-                self.cloud_system.render(renderer)?;
-            }
-
-            if !conditions.is_raining
-                && !conditions.is_thunderstorm
-                && !conditions.is_snowing
-                && conditions.is_day
-            {
-                self.bird_system.update(term_width, term_height);
-                self.bird_system.render(renderer)?;
-            }
+            self.bird_system.update(term_width, term_height);
+            self.bird_system.render(renderer)?;
         }
 
         if state.should_show_sun()
@@ -117,6 +110,36 @@ impl AnimationManager {
             let animation_y = if term_height > 20 { 3 } else { 2 };
             self.animation_controller
                 .render_frame(renderer, &self.sunny_animation, animation_y)?;
+        }
+
+        if conditions.is_cloudy
+            || (!conditions.is_raining && !conditions.is_thunderstorm && !conditions.is_snowing)
+        {
+            let (is_clear, cloud_color) = if let Some(weather) = &state.current_weather {
+                match weather.condition {
+                    crate::weather::WeatherCondition::Clear => (true, Color::White),
+                    crate::weather::WeatherCondition::PartlyCloudy => (false, Color::Grey),
+                    _ => (false, Color::DarkGrey),
+                }
+            } else {
+                (false, Color::DarkGrey)
+            };
+
+            if conditions.is_cloudy || is_clear {
+                self.cloud_system.set_cloud_color(is_clear);
+                self.cloud_system
+                    .update(term_width, term_height, is_clear, cloud_color);
+                self.cloud_system.render(renderer)?;
+            }
+        }
+
+        if !conditions.is_raining
+            && !conditions.is_thunderstorm
+            && !conditions.is_snowing
+            && !conditions.is_foggy
+        {
+            self.airplane_system.update(term_width, term_height);
+            self.airplane_system.render(renderer)?;
         }
 
         Ok(())
