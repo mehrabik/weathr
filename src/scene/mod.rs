@@ -15,7 +15,7 @@ pub struct WorldScene {
 }
 
 impl WorldScene {
-    pub const GROUND_HEIGHT: u16 = 10;
+    pub const GROUND_HEIGHT: u16 = 7;
 
     pub fn new(width: u16, height: u16) -> Self {
         let house = house::House;
@@ -50,8 +50,6 @@ impl WorldScene {
         let house_y = horizon_y.saturating_sub(house_height);
 
         // Door/Path alignment
-        let door_offset = self.house.door_offset();
-        let path_center = house_x + door_offset;
 
         // Render Ground
         self.ground.render(
@@ -59,7 +57,6 @@ impl WorldScene {
             self.width,
             Self::GROUND_HEIGHT,
             horizon_y,
-            path_center,
             conditions.is_day,
         )?;
 
@@ -74,7 +71,6 @@ impl WorldScene {
                 horizon_y,
                 house_x,
                 house_width,
-                path_center,
                 width: self.width,
                 is_day: conditions.is_day,
             },

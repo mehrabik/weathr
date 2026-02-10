@@ -12,7 +12,6 @@ impl Ground {
         width: u16,
         height: u16,
         y_start: u16,
-        _path_center: u16,
         is_day: bool,
     ) -> io::Result<()> {
         let width = width as usize;

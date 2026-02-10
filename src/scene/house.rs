@@ -19,7 +19,6 @@ pub struct House;
 impl House {
     pub const WIDTH: u16 = 64;
     pub const HEIGHT: u16 = 13;
-    pub const DOOR_OFFSET: u16 = 18;
     pub const CHIMNEY_X_OFFSET: u16 = 10;
 
     pub fn height(&self) -> u16 {
@@ -30,9 +29,6 @@ impl House {
         Self::WIDTH
     }
 
-    pub fn door_offset(&self) -> u16 {
-        Self::DOOR_OFFSET
-    }
 
     pub fn get_ascii(&self) -> Vec<&'static str> {
         vec![

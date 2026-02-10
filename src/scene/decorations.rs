@@ -9,7 +9,6 @@ pub struct DecorationRenderConfig {
     pub horizon_y: u16,
     pub house_x: u16,
     pub house_width: u16,
-    pub path_center: u16,
     pub width: u16,
     pub is_day: bool,
 }
@@ -65,17 +64,21 @@ impl Decorations {
             }
         }
 
-        // Render Bush (Left of path, near house)
-        let (bush_lines, bush_color) = self.get_bush(config.is_day);
-        let bush_height = bush_lines.len() as u16;
-        let bush_x = config.path_center.saturating_sub(10);
-        let bush_y = config.horizon_y.saturating_sub(bush_height / 2); // Sitting partially on ground line
+        // Render Second Tree (Right of house, only if terminal is wide enough)
+        if config.width > 120 {
+            let (pine_lines, pine_color) = self.get_pine_tree(config.is_day);
+            let pine_height = pine_lines.len() as u16;
+            let pine_x = config.house_x + config.house_width + 18; // 18 chars right of house
+            let pine_y = config.horizon_y.saturating_sub(pine_height);
 
-        if bush_x > 0 {
-            for (i, line) in bush_lines.iter().enumerate() {
-                renderer.render_line_colored(bush_x, bush_y + i as u16, line, bush_color)?;
+            if pine_x + 10 < config.width {
+                // Check if full tree fits
+                for (i, line) in pine_lines.iter().enumerate() {
+                    renderer.render_line_colored(pine_x, pine_y + i as u16, line, pine_color)?;
+                }
             }
         }
+
         Ok(())
     }
 
@@ -96,17 +99,6 @@ impl Decorations {
         )
     }
 
-    fn get_bush(&self, is_day: bool) -> (Vec<&'static str>, Color) {
-        (
-            vec!["  ,.,  ", " (,,,,)", "  \"||\" "],
-            if is_day {
-                Color::Green
-            } else {
-                Color::DarkGreen
-            },
-        )
-    }
-
     fn get_fence(&self, is_day: bool) -> (Vec<&'static str>, Color) {
         (
             vec!["|--|--|--|--|", "|  |  |  |  |"],
@@ -118,6 +110,23 @@ impl Decorations {
         (
             vec![" ___ ", "|___|", "  |  "],
             if is_day { Color::Blue } else { Color::DarkBlue },
+        )
+    }
+
+    fn get_pine_tree(&self, is_day: bool) -> (Vec<&'static str>, Color) {
+        (
+            vec![
+                "    *    ",
+                "   ***   ",
+                "  *****  ",
+                " ******* ",
+                "   |||   ",
+            ],
+            if is_day {
+                Color::DarkGreen
+            } else {
+                Color::Rgb { r: 0, g: 50, b: 0 }
+            },
         )
     }
 }
