@@ -1,3 +1,4 @@
+use crate::cache;
 use crate::weather::normalizer::WeatherNormalizer;
 use crate::weather::provider::WeatherProvider;
 use crate::weather::types::{WeatherData, WeatherLocation, WeatherUnits};
@@ -40,7 +41,16 @@ impl WeatherClient {
             }
         }
 
-        // Fetch fresh data
+        if let Some(cached_data) = cache::load_cached_weather(location.latitude, location.longitude)
+        {
+            let mut cache = self.cache.write().await;
+            *cache = Some(CachedWeather {
+                data: cached_data.clone(),
+                fetched_at: Instant::now(),
+            });
+            return Ok(cached_data);
+        }
+
         let response = self.provider.get_current_weather(location, units).await?;
 
         let data = WeatherNormalizer::normalize(response);
@@ -52,6 +62,8 @@ impl WeatherClient {
                 fetched_at: Instant::now(),
             });
         }
+
+        cache::save_weather_cache(&data, location.latitude, location.longitude);
 
         Ok(data)
     }

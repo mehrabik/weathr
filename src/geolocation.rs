@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use crate::cache;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 struct IpInfoResponse {
@@ -6,7 +7,7 @@ struct IpInfoResponse {
     city: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeoLocation {
     pub latitude: f64,
     pub longitude: f64,
@@ -14,6 +15,10 @@ pub struct GeoLocation {
 }
 
 pub async fn detect_location() -> Result<GeoLocation, String> {
+    if let Some(cached) = cache::load_cached_location() {
+        return Ok(cached);
+    }
+
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
@@ -42,9 +47,13 @@ pub async fn detect_location() -> Result<GeoLocation, String> {
         .parse::<f64>()
         .map_err(|e| format!("Invalid longitude: {}", e))?;
 
-    Ok(GeoLocation {
+    let location = GeoLocation {
         latitude,
         longitude,
         city: ip_info.city,
-    })
+    };
+
+    cache::save_location_cache(&location);
+
+    Ok(location)
 }

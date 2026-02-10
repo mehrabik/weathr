@@ -148,7 +148,7 @@ pub enum PrecipitationUnit {
     Inch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct WeatherData {
     pub condition: WeatherCondition,

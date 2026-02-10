@@ -1,6 +1,6 @@
 use crate::weather::{
-    format_precipitation, format_temperature, format_wind_speed, WeatherCondition,
-    WeatherConditions, WeatherData, WeatherLocation, WeatherUnits,
+    WeatherCondition, WeatherConditions, WeatherData, WeatherLocation, WeatherUnits,
+    format_precipitation, format_temperature, format_wind_speed,
 };
 use std::time::Instant;
 

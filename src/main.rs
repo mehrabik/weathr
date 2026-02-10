@@ -2,6 +2,7 @@ mod animation;
 mod animation_manager;
 mod app;
 mod app_state;
+mod cache;
 mod config;
 mod geolocation;
 mod render;
