@@ -2,6 +2,7 @@ use crate::weather::provider::{WeatherProvider, WeatherProviderResponse};
 use crate::weather::types::{
     PrecipitationUnit, TemperatureUnit, WeatherLocation, WeatherUnits, WindSpeedUnit,
 };
+use crate::weather::units::{normalize_precipitation, normalize_temperature, normalize_wind_speed};
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::time::Duration;
@@ -109,11 +110,14 @@ impl WeatherProvider for OpenMeteoProvider {
 
         Ok(WeatherProviderResponse {
             weather_code: data.current.weather_code,
-            temperature: data.current.temperature_2m,
-            apparent_temperature: data.current.apparent_temperature,
+            temperature: normalize_temperature(data.current.temperature_2m, units.temperature),
+            apparent_temperature: normalize_temperature(
+                data.current.apparent_temperature,
+                units.temperature,
+            ),
             humidity: data.current.relative_humidity_2m,
-            precipitation: data.current.precipitation,
-            wind_speed: data.current.wind_speed_10m,
+            precipitation: normalize_precipitation(data.current.precipitation, units.precipitation),
+            wind_speed: normalize_wind_speed(data.current.wind_speed_10m, units.wind_speed),
             wind_direction: data.current.wind_direction_10m,
             cloud_cover: data.current.cloud_cover,
             pressure: data.current.surface_pressure,

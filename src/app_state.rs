@@ -1,4 +1,7 @@
-use crate::weather::{WeatherCondition, WeatherConditions, WeatherData, WeatherLocation};
+use crate::weather::{
+    format_precipitation, format_temperature, format_wind_speed, WeatherCondition,
+    WeatherConditions, WeatherData, WeatherLocation, WeatherUnits,
+};
 use std::time::Instant;
 
 pub struct AppState {
@@ -11,10 +14,11 @@ pub struct AppState {
     pub weather_info_needs_update: bool,
     pub location: WeatherLocation,
     pub hide_location: bool,
+    pub units: WeatherUnits,
 }
 
 impl AppState {
-    pub fn new(location: WeatherLocation, hide_location: bool) -> Self {
+    pub fn new(location: WeatherLocation, hide_location: bool, units: WeatherUnits) -> Self {
         Self {
             current_weather: None,
             weather_error: None,
@@ -25,6 +29,7 @@ impl AppState {
             weather_info_needs_update: true,
             location,
             hide_location,
+            units,
         }
     }
 
@@ -97,19 +102,25 @@ impl AppState {
         self.cached_weather_info = if let Some(ref error) = self.weather_error {
             format!("{}{} | Press 'q' to quit", error, location_str)
         } else if let Some(ref weather) = self.current_weather {
+            let (temp, temp_unit) = format_temperature(weather.temperature, self.units.temperature);
+            let (wind, wind_unit) = format_wind_speed(weather.wind_speed, self.units.wind_speed);
+            let (precip, precip_unit) =
+                format_precipitation(weather.precipitation, self.units.precipitation);
+
             format!(
-                "Weather: {} | Temp: {:.1}°C{}{} | Press 'q' to quit",
+                "Weather: {} | Temp: {:.1}{} | Wind: {:.1}{} | Precip: {:.1}{}{}{} | Press 'q' to quit",
                 self.get_condition_text(),
-                weather.temperature,
+                temp,
+                temp_unit,
+                wind,
+                wind_unit,
+                precip,
+                precip_unit,
                 offline_indicator,
                 location_str
             )
         } else {
-            format!(
-                "Weather: Loading... {}{} | Press 'q' to quit",
-                self.loading_state.current_char(),
-                location_str
-            )
+            format!("Weather: Loading... {}", self.loading_state.current_char())
         };
 
         self.weather_info_needs_update = false;
