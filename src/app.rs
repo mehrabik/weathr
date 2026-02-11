@@ -1,6 +1,7 @@
 use crate::animation_manager::AnimationManager;
 use crate::app_state::AppState;
 use crate::config::Config;
+use crate::error::WeatherError;
 use crate::render::TerminalRenderer;
 use crate::scene::WorldScene;
 use crate::weather::{
@@ -60,7 +61,7 @@ pub struct App {
     state: AppState,
     animations: AnimationManager,
     scene: WorldScene,
-    weather_receiver: mpsc::Receiver<Result<WeatherData, String>>,
+    weather_receiver: mpsc::Receiver<Result<WeatherData, WeatherError>>,
     hide_hud: bool,
 }
 
@@ -171,7 +172,12 @@ impl App {
                         self.animations
                             .update_wind(wind_speed as f32, wind_direction as f32);
                     }
-                    Err(_) => {
+                    Err(error) => {
+                        let _error_msg = match &error {
+                            WeatherError::Network(net_err) => net_err.user_friendly_message(),
+                            _ => format!("Failed to fetch weather: {}", error),
+                        };
+
                         if self.state.current_weather.is_none() {
                             let offline_weather = generate_offline_weather();
                             let rain_intensity = offline_weather.condition.rain_intensity();

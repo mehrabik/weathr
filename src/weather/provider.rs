@@ -1,3 +1,4 @@
+use crate::error::WeatherError;
 use crate::weather::types::{WeatherLocation, WeatherUnits};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -25,5 +26,5 @@ pub trait WeatherProvider: Send + Sync {
         &self,
         location: &WeatherLocation,
         units: &WeatherUnits,
-    ) -> Result<WeatherProviderResponse, String>;
+    ) -> Result<WeatherProviderResponse, WeatherError>;
 }

@@ -1,12 +1,16 @@
 mod capabilities;
 
+use crate::error::TerminalError;
 use capabilities::TerminalCapabilities;
 use crossterm::{
     cursor, execute, queue,
     style::{Color, Print, ResetColor, SetForegroundColor},
     terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::io::{self, BufWriter, Stdout, Write};
+use std::io::{self, BufWriter, IsTerminal, Stdout, Write};
+
+const MIN_TERMINAL_WIDTH: u16 = 80;
+const MIN_TERMINAL_HEIGHT: u16 = 24;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Cell {
@@ -33,8 +37,22 @@ pub struct TerminalRenderer {
 }
 
 impl TerminalRenderer {
-    pub fn new() -> io::Result<Self> {
-        let (width, height) = terminal::size()?;
+    pub fn new() -> Result<Self, TerminalError> {
+        if !io::stdout().is_terminal() {
+            return Err(TerminalError::NotATty);
+        }
+
+        let (width, height) = terminal::size().map_err(TerminalError::SizeError)?;
+
+        if width < MIN_TERMINAL_WIDTH || height < MIN_TERMINAL_HEIGHT {
+            return Err(TerminalError::TooSmall {
+                width,
+                height,
+                min_width: MIN_TERMINAL_WIDTH,
+                min_height: MIN_TERMINAL_HEIGHT,
+            });
+        }
+
         let stdout = BufWriter::new(io::stdout());
         let buffer_size = (width as usize) * (height as usize);
         let capabilities = TerminalCapabilities::detect();
@@ -49,9 +67,10 @@ impl TerminalRenderer {
         })
     }
 
-    pub fn init(&mut self) -> io::Result<()> {
-        terminal::enable_raw_mode()?;
-        execute!(self.stdout, EnterAlternateScreen, cursor::Hide)?;
+    pub fn init(&mut self) -> Result<(), TerminalError> {
+        terminal::enable_raw_mode().map_err(TerminalError::RawModeError)?;
+        execute!(self.stdout, EnterAlternateScreen, cursor::Hide)
+            .map_err(TerminalError::InitError)?;
         Ok(())
     }
 

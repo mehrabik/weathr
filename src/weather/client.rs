@@ -1,4 +1,5 @@
 use crate::cache;
+use crate::error::WeatherError;
 use crate::weather::normalizer::WeatherNormalizer;
 use crate::weather::provider::WeatherProvider;
 use crate::weather::types::{WeatherData, WeatherLocation, WeatherUnits};
@@ -31,7 +32,7 @@ impl WeatherClient {
         &self,
         location: &WeatherLocation,
         units: &WeatherUnits,
-    ) -> Result<WeatherData, String> {
+    ) -> Result<WeatherData, WeatherError> {
         {
             let cache = self.cache.read().await;
             if let Some(cached) = cache.as_ref()

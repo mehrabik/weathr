@@ -4,6 +4,7 @@ mod app;
 mod app_state;
 mod cache;
 mod config;
+mod error;
 mod geolocation;
 mod render;
 mod scene;
@@ -170,14 +171,23 @@ async fn main() -> io::Result<()> {
                 config.location.longitude = geo_loc.longitude;
             }
             Err(e) => {
-                eprintln!("Failed to auto-detect location: {}", e);
-                eprintln!("Using configured/default location.");
+                eprintln!("{}", e.user_friendly_message());
             }
         }
     }
 
-    let mut renderer = TerminalRenderer::new()?;
-    renderer.init()?;
+    let mut renderer = match TerminalRenderer::new() {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("\n{}\n", e.user_friendly_message());
+            std::process::exit(1);
+        }
+    };
+
+    if let Err(e) = renderer.init() {
+        eprintln!("\n{}\n", e.user_friendly_message());
+        std::process::exit(1);
+    };
 
     let (term_width, term_height) = renderer.get_size();
 
@@ -199,5 +209,10 @@ async fn main() -> io::Result<()> {
 
     renderer.cleanup()?;
 
-    result
+    if let Err(e) = result {
+        eprintln!("Application error: {}", e);
+        std::process::exit(1);
+    }
+
+    Ok(())
 }

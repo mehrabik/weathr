@@ -62,7 +62,12 @@ fn test_config_integration_malformed_toml() {
 
     let result = Config::load_from_path(&test_config_path);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Failed to parse config"));
+
+    use weathr::error::ConfigError;
+    match result.unwrap_err() {
+        ConfigError::ParseError(_) => {}
+        other => panic!("Expected ParseError, got: {:?}", other),
+    }
 
     fs::remove_file(test_config_path).ok();
 }

@@ -1,3 +1,4 @@
+use crate::error::{NetworkError, WeatherError};
 use crate::weather::provider::{WeatherProvider, WeatherProviderResponse};
 use crate::weather::types::{
     PrecipitationUnit, TemperatureUnit, WeatherLocation, WeatherUnits, WindSpeedUnit,
@@ -6,6 +7,8 @@ use crate::weather::units::{normalize_precipitation, normalize_temperature, norm
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::time::Duration;
+
+const OPEN_METEO_BASE_URL: &str = "https://api.open-meteo.com/v1/forecast";
 
 pub struct OpenMeteoProvider {
     client: reqwest::Client,
@@ -40,11 +43,15 @@ impl OpenMeteoProvider {
             .timeout(Duration::from_secs(10))
             .connect_timeout(Duration::from_secs(5))
             .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+            .unwrap_or_else(|e| {
+                eprintln!("Warning: Failed to create custom HTTP client: {}", e);
+                eprintln!("Using default client with standard timeout settings.");
+                reqwest::Client::new()
+            });
 
         Self {
             client,
-            base_url: "https://api.open-meteo.com/v1/forecast".to_string(),
+            base_url: OPEN_METEO_BASE_URL.to_string(),
         }
     }
 
@@ -96,15 +103,19 @@ impl WeatherProvider for OpenMeteoProvider {
         &self,
         location: &WeatherLocation,
         units: &WeatherUnits,
-    ) -> Result<WeatherProviderResponse, String> {
+    ) -> Result<WeatherProviderResponse, WeatherError> {
         let url = self.build_url(location, units);
         let response = self
             .client
-            .get(url)
+            .get(&url)
             .send()
             .await
-            .map_err(|e| e.to_string())?;
-        let data: OpenMeteoResponse = response.json().await.map_err(|e| e.to_string())?;
+            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 10)))?;
+
+        let data: OpenMeteoResponse = response
+            .json()
+            .await
+            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 10)))?;
 
         let moon_phase = Some(0.5);
 

@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::error::ConfigError;
 use crate::weather::types::WeatherUnits;
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -46,7 +47,7 @@ impl Default for Location {
 }
 
 impl Config {
-    pub fn load() -> Result<Self, String> {
+    pub fn load() -> Result<Self, ConfigError> {
         // try local config.toml
         if let Ok(cwd) = std::env::current_dir() {
             let local_config = cwd.join("config.toml");
@@ -72,36 +73,32 @@ impl Config {
         Ok(config)
     }
 
-    fn validate(&self) -> Result<(), String> {
+    fn validate(&self) -> Result<(), ConfigError> {
         if self.location.latitude < -90.0 || self.location.latitude > 90.0 {
-            return Err(format!(
-                "Invalid latitude: {}. Must be between -90.0 and 90.0",
-                self.location.latitude
-            ));
+            return Err(ConfigError::InvalidLatitude(self.location.latitude));
         }
 
         if self.location.longitude < -180.0 || self.location.longitude > 180.0 {
-            return Err(format!(
-                "Invalid longitude: {}. Must be between -180.0 and 180.0",
-                self.location.longitude
-            ));
+            return Err(ConfigError::InvalidLongitude(self.location.longitude));
         }
 
         Ok(())
     }
 
-    pub fn load_from_path(path: &PathBuf) -> Result<Self, String> {
-        let content = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read config file at {:?}: {}", path, e))?;
+    pub fn load_from_path(path: &PathBuf) -> Result<Self, ConfigError> {
+        let content = fs::read_to_string(path).map_err(|e| ConfigError::ReadError {
+            path: path.display().to_string(),
+            source: e,
+        })?;
 
-        toml::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))
+        toml::from_str(&content).map_err(ConfigError::ParseError)
     }
 
-    fn get_config_path() -> Result<PathBuf, String> {
+    fn get_config_path() -> Result<PathBuf, ConfigError> {
         let config_dir = if let Ok(xdg_config) = std::env::var("XDG_CONFIG_HOME") {
             PathBuf::from(xdg_config)
         } else {
-            dirs::config_dir().ok_or("Could not determine config directory")?
+            dirs::config_dir().ok_or(ConfigError::NoConfigDir)?
         };
 
         Ok(config_dir.join("weathr").join("config.toml"))
@@ -159,7 +156,7 @@ longitude = 151.2093
         let nonexistent_path = PathBuf::from("/tmp/nonexistent_weathr_config_12345.toml");
         let result = Config::load_from_path(&nonexistent_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to read config file"));
+        assert_eq!(result.unwrap_err().kind(), "ReadError");
     }
 
     #[test]
@@ -172,7 +169,7 @@ longitude = 151.2093
 
         let result = Config::load_from_path(&test_config_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to parse config"));
+        assert_eq!(result.unwrap_err().kind(), "ParseError");
 
         fs::remove_file(test_config_path).ok();
     }
@@ -237,7 +234,7 @@ longitude = 0.0
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("latitude"));
+        assert_eq!(result.unwrap_err().kind(), "InvalidLatitude");
     }
 
     #[test]
@@ -254,7 +251,7 @@ longitude = 0.0
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("latitude"));
+        assert_eq!(result.unwrap_err().kind(), "InvalidLatitude");
     }
 
     #[test]
@@ -271,7 +268,7 @@ longitude = 0.0
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("longitude"));
+        assert_eq!(result.unwrap_err().kind(), "InvalidLongitude");
     }
 
     #[test]
@@ -288,7 +285,7 @@ longitude = 0.0
         };
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("longitude"));
+        assert_eq!(result.unwrap_err().kind(), "InvalidLongitude");
     }
 
     #[test]

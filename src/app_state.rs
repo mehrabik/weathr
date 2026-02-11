@@ -6,7 +6,6 @@ use std::time::Instant;
 
 pub struct AppState {
     pub current_weather: Option<WeatherData>,
-    pub weather_error: Option<String>,
     pub is_offline: bool,
     pub weather_conditions: WeatherConditions,
     pub loading_state: LoadingState,
@@ -21,7 +20,6 @@ impl AppState {
     pub fn new(location: WeatherLocation, hide_location: bool, units: WeatherUnits) -> Self {
         Self {
             current_weather: None,
-            weather_error: None,
             is_offline: false,
             weather_conditions: WeatherConditions::default(),
             loading_state: LoadingState::new(),
@@ -43,7 +41,6 @@ impl AppState {
         self.weather_conditions.is_day = weather.is_day;
 
         self.current_weather = Some(weather);
-        self.weather_error = None;
         self.is_offline = false;
         self.weather_info_needs_update = true;
     }
@@ -97,18 +94,17 @@ impl AppState {
             )
         };
 
-        let offline_indicator = if self.is_offline { " | OFFLINE" } else { "" };
-
-        self.cached_weather_info = if let Some(ref error) = self.weather_error {
-            format!("{}{} | Press 'q' to quit", error, location_str)
-        } else if let Some(ref weather) = self.current_weather {
+        self.cached_weather_info = if let Some(ref weather) = self.current_weather {
             let (temp, temp_unit) = format_temperature(weather.temperature, self.units.temperature);
             let (wind, wind_unit) = format_wind_speed(weather.wind_speed, self.units.wind_speed);
             let (precip, precip_unit) =
                 format_precipitation(weather.precipitation, self.units.precipitation);
 
+            let offline_indicator = if self.is_offline { "OFFLINE | " } else { "" };
+
             format!(
-                "Weather: {} | Temp: {:.1}{} | Wind: {:.1}{} | Precip: {:.1}{}{}{} | Press 'q' to quit",
+                "{}Weather: {} | Temp: {:.1}{} | Wind: {:.1}{} | Precip: {:.1}{}{} | Press 'q' to quit",
+                offline_indicator,
                 self.get_condition_text(),
                 temp,
                 temp_unit,
@@ -116,7 +112,6 @@ impl AppState {
                 wind_unit,
                 precip,
                 precip_unit,
-                offline_indicator,
                 location_str
             )
         } else {
