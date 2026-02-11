@@ -40,8 +40,8 @@ struct CurrentWeather {
 impl OpenMeteoProvider {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(10))
-            .connect_timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(10))
             .build()
             .unwrap_or_else(|e| {
                 eprintln!("Warning: Failed to create custom HTTP client: {}", e);
@@ -110,12 +110,12 @@ impl WeatherProvider for OpenMeteoProvider {
             .get(&url)
             .send()
             .await
-            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 10)))?;
+            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 30)))?;
 
         let data: OpenMeteoResponse = response
             .json()
             .await
-            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 10)))?;
+            .map_err(|e| WeatherError::Network(NetworkError::from_reqwest(e, &url, 30)))?;
 
         let moon_phase = Some(0.5);
 
