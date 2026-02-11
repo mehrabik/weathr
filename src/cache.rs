@@ -1,8 +1,8 @@
 use crate::geolocation::GeoLocation;
 use crate::weather::WeatherData;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::path::PathBuf;
+use tokio::fs;
 
 const LOCATION_CACHE_DURATION_SECS: u64 = 86400;
 const WEATHER_CACHE_DURATION_SECS: u64 = 300;
@@ -40,9 +40,9 @@ fn make_location_key(latitude: f64, longitude: f64) -> String {
     format!("{:.2},{:.2}", latitude, longitude)
 }
 
-pub fn load_cached_location() -> Option<GeoLocation> {
+pub async fn load_cached_location() -> Option<GeoLocation> {
     let cache_path = get_cache_dir()?.join("location.json");
-    let contents = fs::read_to_string(&cache_path).ok()?;
+    let contents = fs::read_to_string(&cache_path).await.ok()?;
     let cache: LocationCache = serde_json::from_str(&contents).ok()?;
 
     let now = current_timestamp();
@@ -54,23 +54,26 @@ pub fn load_cached_location() -> Option<GeoLocation> {
 }
 
 pub fn save_location_cache(location: &GeoLocation) {
-    if let Some(cache_dir) = get_cache_dir() {
-        let _ = fs::create_dir_all(&cache_dir);
+    let location = location.clone();
+    tokio::spawn(async move {
+        if let Some(cache_dir) = get_cache_dir() {
+            let _ = fs::create_dir_all(&cache_dir).await;
 
-        let cache = LocationCache {
-            location: location.clone(),
-            cached_at: current_timestamp(),
-        };
+            let cache = LocationCache {
+                location,
+                cached_at: current_timestamp(),
+            };
 
-        if let Ok(json) = serde_json::to_string(&cache) {
-            let _ = fs::write(cache_dir.join("location.json"), json);
+            if let Ok(json) = serde_json::to_string(&cache) {
+                let _ = fs::write(cache_dir.join("location.json"), json).await;
+            }
         }
-    }
+    });
 }
 
-pub fn load_cached_weather(latitude: f64, longitude: f64) -> Option<WeatherData> {
+pub async fn load_cached_weather(latitude: f64, longitude: f64) -> Option<WeatherData> {
     let cache_path = get_cache_dir()?.join("weather.json");
-    let contents = fs::read_to_string(&cache_path).ok()?;
+    let contents = fs::read_to_string(&cache_path).await.ok()?;
     let cache: WeatherCache = serde_json::from_str(&contents).ok()?;
 
     let location_key = make_location_key(latitude, longitude);
@@ -87,17 +90,20 @@ pub fn load_cached_weather(latitude: f64, longitude: f64) -> Option<WeatherData>
 }
 
 pub fn save_weather_cache(weather: &WeatherData, latitude: f64, longitude: f64) {
-    if let Some(cache_dir) = get_cache_dir() {
-        let _ = fs::create_dir_all(&cache_dir);
+    let weather = weather.clone();
+    tokio::spawn(async move {
+        if let Some(cache_dir) = get_cache_dir() {
+            let _ = fs::create_dir_all(&cache_dir).await;
 
-        let cache = WeatherCache {
-            data: weather.clone(),
-            cached_at: current_timestamp(),
-            location_key: make_location_key(latitude, longitude),
-        };
+            let cache = WeatherCache {
+                data: weather,
+                cached_at: current_timestamp(),
+                location_key: make_location_key(latitude, longitude),
+            };
 
-        if let Ok(json) = serde_json::to_string(&cache) {
-            let _ = fs::write(cache_dir.join("weather.json"), json);
+            if let Ok(json) = serde_json::to_string(&cache) {
+                let _ = fs::write(cache_dir.join("weather.json"), json).await;
+            }
         }
-    }
+    });
 }

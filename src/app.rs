@@ -17,11 +17,9 @@ const REFRESH_INTERVAL: Duration = Duration::from_secs(300);
 const INPUT_POLL_FPS: u64 = 30;
 const FRAME_DURATION: Duration = Duration::from_millis(1000 / INPUT_POLL_FPS);
 
-fn generate_offline_weather() -> WeatherData {
+fn generate_offline_weather(rng: &mut impl rand::Rng) -> WeatherData {
     use chrono::{Local, Timelike};
     use rand::RngExt;
-
-    let mut rng = rand::rng();
 
     let now = Local::now();
     let hour = now.hour();
@@ -180,7 +178,7 @@ impl App {
                         };
 
                         if self.state.current_weather.is_none() {
-                            let offline_weather = generate_offline_weather();
+                            let offline_weather = generate_offline_weather(&mut rng);
                             let rain_intensity = offline_weather.condition.rain_intensity();
                             let snow_intensity = offline_weather.condition.snow_intensity();
                             let fog_intensity = offline_weather.condition.fog_intensity();

@@ -21,7 +21,7 @@ pub struct GeoLocation {
 }
 
 pub async fn detect_location() -> Result<GeoLocation, GeolocationError> {
-    if let Some(cached) = cache::load_cached_location() {
+    if let Some(cached) = cache::load_cached_location().await {
         return Ok(cached);
     }
 
