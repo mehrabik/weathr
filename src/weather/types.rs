@@ -64,7 +64,7 @@ impl WeatherCondition {
 
     pub fn fog_intensity(&self) -> FogIntensity {
         match self {
-            Self::Fog => FogIntensity::Heavy,
+            Self::Fog => FogIntensity::Medium,
             _ => FogIntensity::Light,
         }
     }
