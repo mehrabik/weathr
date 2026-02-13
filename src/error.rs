@@ -14,6 +14,9 @@ pub enum WeatherError {
 
     #[error("{0}")]
     Geolocation(#[from] GeolocationError),
+
+    #[error("configuration error: {0}")]
+    Configuration(String),
 }
 
 #[derive(ThisError, Debug)]

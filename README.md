@@ -60,6 +60,8 @@ mkdir -p ~/.config/weathr
 mkdir -p ~/Library/Application\ Support/weathr
 ```
 
+You can use the provided [config.example.toml](config.example.toml) as a template.
+
 Edit the config file at the appropriate path for your platform:
 
 ```toml
@@ -86,6 +88,50 @@ wind_speed = "kmh"
 
 # Precipitation unit: "mm" or "inch"
 precipitation = "mm"
+
+[weather]
+# Weather data provider: "open_meteo", "openweathermap", or "weatherapi"
+# Default: "open_meteo" (no API key required)
+provider = "open_meteo"
+
+# API key for the weather provider (required for openweathermap and weatherapi)
+# api_key = "your_api_key_here"
+```
+
+### Weather Provider Configuration
+
+The app supports multiple weather data providers:
+
+#### Open-Meteo (Default)
+- **No API key required**
+- Free and open source
+- Good global coverage
+
+```toml
+[weather]
+provider = "open_meteo"
+```
+
+#### OpenWeatherMap
+- **API key required** - Get one at [openweathermap.org](https://openweathermap.org/api)
+- Free tier: 1,000 calls/day
+- Excellent global coverage
+
+```toml
+[weather]
+provider = "openweathermap"
+api_key = "your_openweathermap_api_key"
+```
+
+#### WeatherAPI
+- **API key required** - Get one at [weatherapi.com](https://www.weatherapi.com/)
+- Free tier: 1,000,000 calls/month
+- Good global coverage
+
+```toml
+[weather]
+provider = "weatherapi"
+api_key = "your_weatherapi_key"
 ```
 
 ### Example Locations
@@ -182,7 +228,7 @@ This is optional. You can disable auto-location and manually specify coordinates
 
 ## Roadmap
 
-- [ ] Support for OpenWeatherMap, WeatherAPI, etc.
+- [x] Support for OpenWeatherMap, WeatherAPI, etc.
 - [ ] Pre-built binaries for ARM64 arch.
 - [ ] Installation via AUR.
 - [ ] Key bindings for manual refresh, speed up animations, pause animations, and toggle HUD.
@@ -195,7 +241,10 @@ GPL-3.0-or-later
 
 ### Weather Data
 
-Weather data provided by [Open-Meteo.com](https://open-meteo.com/) under the [CC BY 4.0 license](https://creativecommons.org/licenses/by/4.0/).
+Weather data can be provided by:
+- [Open-Meteo.com](https://open-meteo.com/) (default) - Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- [OpenWeatherMap](https://openweathermap.org/)
+- [WeatherAPI.com](https://www.weatherapi.com/)
 
 ### ASCII Art
 

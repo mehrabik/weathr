@@ -5,7 +5,7 @@ use crate::error::WeatherError;
 use crate::render::TerminalRenderer;
 use crate::scene::WorldScene;
 use crate::weather::{
-    OpenMeteoProvider, WeatherClient, WeatherCondition, WeatherData, WeatherLocation,
+    create_provider, WeatherClient, WeatherCondition, WeatherData, WeatherLocation,
 };
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use std::io;
@@ -61,9 +61,30 @@ pub struct App {
     scene: WorldScene,
     weather_receiver: mpsc::Receiver<Result<WeatherData, WeatherError>>,
     hide_hud: bool,
+    provider_name: String,
 }
 
 impl App {
+    pub async fn validate_provider(config: &Config) -> Result<(), WeatherError> {
+        if config.weather.provider.to_lowercase() == "open_meteo" {
+            return Ok(());
+        }
+
+        let provider = create_provider(&config.weather)?;
+
+        // Use the user's configured location or a known valid location
+        let test_location = WeatherLocation {
+            latitude: config.location.latitude,
+            longitude: config.location.longitude,
+            elevation: None,
+        };
+
+        match provider.get_current_weather(&test_location, &config.units).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn new(
         config: &Config,
         simulate_condition: Option<String>,
@@ -83,6 +104,13 @@ impl App {
         let scene = WorldScene::new(term_width, term_height);
 
         let (tx, rx) = mpsc::channel(1);
+
+        // Set provider name based on config
+        let mut provider_name = match config.weather.provider.to_lowercase().as_str() {
+            "openweathermap" | "open_weather_map" => String::from("OpenWeatherMap"),
+            "weatherapi" | "weather_api" => String::from("WeatherAPI.com"),
+            _ => String::from("Open-Meteo.com"),
+        };
 
         if let Some(ref condition_str) = simulate_condition {
             let simulated_condition =
@@ -128,7 +156,15 @@ impl App {
             animations.update_snow_intensity(snow_intensity);
             animations.update_wind(wind_speed as f32, wind_direction as f32);
         } else {
-            let provider = Arc::new(OpenMeteoProvider::new());
+            let provider = match create_provider(&config.weather) {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Error creating weather provider: {}", e);
+                    eprintln!("Falling back to Open-Meteo");
+                    provider_name = String::from("Open-Meteo.com");
+                    Arc::new(crate::weather::OpenMeteoProvider::new())
+                }
+            };
             let weather_client = WeatherClient::new(provider, REFRESH_INTERVAL);
             let units = config.units;
 
@@ -149,6 +185,7 @@ impl App {
             scene,
             weather_receiver: rx,
             hide_hud: config.hide_hud,
+            provider_name,
         }
     }
 
@@ -171,12 +208,7 @@ impl App {
                         self.animations
                             .update_wind(wind_speed as f32, wind_direction as f32);
                     }
-                    Err(error) => {
-                        let _error_msg = match &error {
-                            WeatherError::Network(net_err) => net_err.user_friendly_message(),
-                            _ => format!("Failed to fetch weather: {}", error),
-                        };
-
+                    Err(_error) => {
                         if self.state.current_weather.is_none() {
                             let offline_weather = generate_offline_weather(&mut rng);
                             let rain_intensity = offline_weather.condition.rain_intensity();
@@ -243,7 +275,7 @@ impl App {
                 )?;
             }
 
-            let attribution = "Weather data by Open-Meteo.com";
+            let attribution = format!("Weather data by {}", self.provider_name);
             let attribution_x = if term_width > attribution.len() as u16 {
                 term_width - attribution.len() as u16 - 2
             } else {
@@ -253,7 +285,7 @@ impl App {
             renderer.render_line_colored(
                 attribution_x,
                 attribution_y,
-                attribution,
+                &attribution,
                 crossterm::style::Color::DarkGrey,
             )?;
 

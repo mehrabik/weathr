@@ -17,13 +17,16 @@ use crossterm::{
     style::ResetColor,
     terminal::{LeaveAlternateScreen, disable_raw_mode},
 };
+use error::WeatherError;
 use render::TerminalRenderer;
 use std::{io, panic};
 
 const LONG_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
-    "\n\nWeather data by Open-Meteo.com (https://open-meteo.com/)\n",
-    "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
+    "\n\nSupports multiple weather providers:\n",
+    "- Open-Meteo.com (default, no API key required)\n",
+    "- OpenWeatherMap (API key required)\n",
+    "- WeatherAPI.com (API key required)\n"
 );
 
 #[derive(Parser)]
@@ -181,6 +184,20 @@ async fn main() -> io::Result<()> {
             Err(e) => {
                 eprintln!("{}", e.user_friendly_message());
             }
+        }
+    }
+
+    // Validate weather provider before starting UI (skip for simulation mode)
+    if cli.simulate.is_none() {
+        if let Err(e) = app::App::validate_provider(&config).await {
+            let error_msg = match &e {
+                WeatherError::Network(net_err) => net_err.user_friendly_message(),
+                WeatherError::Configuration(msg) => msg.clone(),
+                _ => format!("Weather provider error: {}", e),
+            };
+            eprintln!("\n{}\n", error_msg);
+            eprintln!("Falling back to offline mode with random weather data.");
+            eprintln!("Check your API key and provider settings in config.toml\n");
         }
     }
 

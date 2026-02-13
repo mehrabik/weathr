@@ -13,6 +13,28 @@ pub struct Config {
     pub hide_hud: bool,
     #[serde(default)]
     pub units: WeatherUnits,
+    #[serde(default)]
+    pub weather: WeatherConfig,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct WeatherConfig {
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    pub api_key: Option<String>,
+}
+
+fn default_provider() -> String {
+    "open_meteo".to_string()
+}
+
+impl Default for WeatherConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_provider(),
+            api_key: None,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -231,6 +253,7 @@ longitude = 0.0
             },
             hide_hud: false,
             units: WeatherUnits::default(),
+            weather: WeatherConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -248,6 +271,7 @@ longitude = 0.0
             },
             hide_hud: false,
             units: WeatherUnits::default(),
+            weather: WeatherConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -265,6 +289,7 @@ longitude = 0.0
             },
             hide_hud: false,
             units: WeatherUnits::default(),
+            weather: WeatherConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -282,6 +307,7 @@ longitude = 0.0
             },
             hide_hud: false,
             units: WeatherUnits::default(),
+            weather: WeatherConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -299,6 +325,7 @@ longitude = 0.0
             },
             hide_hud: false,
             units: WeatherUnits::default(),
+            weather: WeatherConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_ok());
