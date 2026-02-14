@@ -17,6 +17,9 @@ pub enum WeatherError {
 
     #[error("configuration error: {0}")]
     Configuration(String),
+
+    #[error("{0}")]
+    Shell(#[from] ShellError),
 }
 
 #[derive(ThisError, Debug)]
@@ -280,4 +283,16 @@ impl GeolocationError {
             }
         }
     }
+}
+
+#[derive(ThisError, Debug)]
+pub enum ShellError {
+    #[error("failed to create PTY: {0}")]
+    PtyCreation(String),
+
+    #[error("failed to spawn shell: {0}")]
+    ShellSpawn(String),
+
+    #[error("PTY I/O error: {0}")]
+    PtyIo(#[from] io::Error),
 }

@@ -8,6 +8,7 @@ mod error;
 mod geolocation;
 mod render;
 mod scene;
+mod shell;
 mod weather;
 
 use clap::Parser;
@@ -72,6 +73,19 @@ struct Cli {
         help = "Use metric units (°C, km/h, mm)"
     )]
     metric: bool,
+
+    #[arg(
+        long,
+        help = "Enable shell background mode (weather as shell background)"
+    )]
+    background: bool,
+
+    #[arg(
+        long,
+        value_name = "SHELL_PATH",
+        help = "Shell to run in background mode (auto-detect if not specified)"
+    )]
+    shell: Option<String>,
 }
 
 #[tokio::main]
@@ -161,6 +175,12 @@ async fn main() -> io::Result<()> {
     if cli.metric {
         config.units = weather::WeatherUnits::metric();
     }
+    if cli.background {
+        config.shell.background_mode = true;
+    }
+    if cli.shell.is_some() {
+        config.shell.shell_path = cli.shell.clone();
+    }
 
     // Auto-detect location if enabled
     if config.location.auto {
@@ -216,14 +236,21 @@ async fn main() -> io::Result<()> {
 
     let (term_width, term_height) = renderer.get_size();
 
-    let mut app = app::App::new(
+    let mut app = match app::App::new(
         &config,
         cli.simulate,
         cli.night,
         cli.leaves,
         term_width,
         term_height,
-    );
+    ) {
+        Ok(app) => app,
+        Err(e) => {
+            renderer.cleanup()?;
+            eprintln!("\nError initializing application: {}\n", e);
+            std::process::exit(1);
+        }
+    };
 
     let result = tokio::select! {
         res = app.run(&mut renderer) => res,

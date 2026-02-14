@@ -15,6 +15,24 @@ pub struct Config {
     pub units: WeatherUnits,
     #[serde(default)]
     pub weather: WeatherConfig,
+    #[serde(default)]
+    pub shell: ShellConfig,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ShellConfig {
+    #[serde(default)]
+    pub background_mode: bool,
+    pub shell_path: Option<String>,
+}
+
+impl Default for ShellConfig {
+    fn default() -> Self {
+        Self {
+            background_mode: false,
+            shell_path: None,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -254,6 +272,7 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());

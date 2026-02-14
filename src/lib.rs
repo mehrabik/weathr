@@ -5,4 +5,5 @@ pub mod error;
 pub mod geolocation;
 pub mod render;
 pub mod scene;
+pub mod shell;
 pub mod weather;
