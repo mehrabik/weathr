@@ -193,7 +193,9 @@ impl App {
                 .unwrap_or_else(|| {
                     std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
                 });
-            Some(ShellManager::new(term_width, term_height, &shell_path)?)
+            // Reserve bottom line for weather info display
+            let shell_height = term_height.saturating_sub(1);
+            Some(ShellManager::new(term_width, shell_height, &shell_path)?)
         } else {
             None
         };
@@ -341,12 +343,26 @@ impl App {
                         Ok(output) if !output.is_empty() => {
                             shell.overlay.process_output(&output);
                         }
-                        _ => break, // No more data available
+                        Ok(_) => break, // No more data available
+                        Err(e) => {
+                            // If PTY read fails (shell exited), exit gracefully
+                            if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
+                                break; // Stop trying to read, continue with exit
+                            }
+                            break; // For other errors, just stop reading this frame
+                        }
                     }
                 }
 
-                // Render shell on top of weather
-                shell.render(renderer)?;
+                // Render shell on top of weather (ignore errors if shell has exited)
+                if let Err(e) = shell.render(renderer) {
+                    // If render fails due to PTY issues, it's okay - shell likely exited
+                    if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
+                        // Continue without rendering shell
+                    } else {
+                        return Err(e); // Propagate other errors
+                    }
+                }
             }
 
             renderer.flush()?;
@@ -354,7 +370,12 @@ impl App {
             // Show cursor at shell position after flush
             if let Some(ref shell) = self.shell_manager {
                 let (cursor_x, cursor_y) = shell.get_cursor_pos();
-                renderer.render_cursor(cursor_x, cursor_y)?;
+                // Ignore cursor rendering errors if shell has exited
+                if let Err(e) = renderer.render_cursor(cursor_x, cursor_y) {
+                    if e.raw_os_error() != Some(5) && e.kind() != io::ErrorKind::BrokenPipe {
+                        return Err(e); // Propagate non-exit errors
+                    }
+                }
             }
 
             if event::poll(FRAME_DURATION)? {
@@ -362,11 +383,18 @@ impl App {
                     Event::Resize(width, height) => {
                         renderer.manual_resize(width, height)?;
 
-                        // Resize shell PTY to match
+                        // Resize shell PTY to match (reserve bottom line for weather info)
                         if let Some(ref mut shell) = self.shell_manager {
-                            shell.resize(width, height).map_err(|e| {
-                                io::Error::new(io::ErrorKind::Other, e.to_string())
-                            })?;
+                            let shell_height = height.saturating_sub(1);
+                            // Ignore resize errors if shell has exited
+                            if let Err(e) = shell.resize(width, shell_height) {
+                                let io_err = io::Error::new(io::ErrorKind::Other, e.to_string());
+                                // If shell has exited, continue without resizing
+                                if io_err.raw_os_error() != Some(5)
+                                    && io_err.kind() != io::ErrorKind::BrokenPipe {
+                                    return Err(io_err); // Propagate non-exit errors
+                                }
+                            }
                         }
                     }
                     Event::Key(key_event) => {
@@ -395,6 +423,7 @@ impl App {
     }
 
     /// Handles input when in background shell mode
+    /// Returns Ok(true) if the application should exit, Ok(false) otherwise
     fn handle_background_input(&mut self, key: KeyEvent) -> io::Result<bool> {
         // Check for prefix key (Ctrl-W)
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('w') {
@@ -419,7 +448,14 @@ impl App {
         // Forward all other input to shell
         if let Some(ref mut shell) = self.shell_manager {
             let bytes = key_event_to_bytes(key);
-            shell.write_input(&bytes)?;
+            // If shell has exited, treat write errors as graceful exit signal
+            if let Err(e) = shell.write_input(&bytes) {
+                // Error code 5 (Input/output error) means the PTY/shell has closed
+                if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
+                    return Ok(true); // Exit gracefully
+                }
+                return Err(e); // Propagate other errors
+            }
         }
 
         Ok(false)
