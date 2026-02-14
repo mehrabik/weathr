@@ -8,6 +8,7 @@ mod error;
 mod geolocation;
 mod render;
 mod scene;
+mod shell;
 mod weather;
 
 use clap::Parser;
@@ -17,13 +18,16 @@ use crossterm::{
     style::ResetColor,
     terminal::{LeaveAlternateScreen, disable_raw_mode},
 };
+use error::WeatherError;
 use render::TerminalRenderer;
 use std::{io, panic};
 
 const LONG_VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
-    "\n\nWeather data by Open-Meteo.com (https://open-meteo.com/)\n",
-    "Licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
+    "\n\nSupports multiple weather providers:\n",
+    "- Open-Meteo.com (default, no API key required)\n",
+    "- OpenWeatherMap (API key required)\n",
+    "- WeatherAPI.com (API key required)\n"
 );
 
 fn info(silent: bool, msg: &str) {
@@ -78,6 +82,19 @@ struct Cli {
 
     #[arg(long, help = "Run silently (suppress non-error output)")]
     silent: bool,
+
+    #[arg(
+        long,
+        help = "Enable shell background mode (weather as shell background)"
+    )]
+    background: bool,
+
+    #[arg(
+        long,
+        value_name = "SHELL_PATH",
+        help = "Shell to run in background mode (auto-detect if not specified)"
+    )]
+    shell: Option<String>,
 }
 
 #[tokio::main]
@@ -170,6 +187,12 @@ async fn main() -> io::Result<()> {
     if cli.silent {
         config.silent = true;
     }
+    if cli.background {
+        config.shell.background_mode = true;
+    }
+    if cli.shell.is_some() {
+        config.shell.shell_path = cli.shell.clone();
+    }
 
     // Auto-detect location if enabled
     if config.location.auto {
@@ -202,6 +225,20 @@ async fn main() -> io::Result<()> {
         }
     }
 
+    // Validate weather provider before starting UI (skip for simulation mode)
+    if cli.simulate.is_none() {
+        if let Err(e) = app::App::validate_provider(&config).await {
+            let error_msg = match &e {
+                WeatherError::Network(net_err) => net_err.user_friendly_message(),
+                WeatherError::Configuration(msg) => msg.clone(),
+                _ => format!("Weather provider error: {}", e),
+            };
+            eprintln!("\n{}\n", error_msg);
+            eprintln!("Falling back to offline mode with random weather data.");
+            eprintln!("Check your API key and provider settings in config.toml\n");
+        }
+    }
+
     let mut renderer = match TerminalRenderer::new() {
         Ok(r) => r,
         Err(e) => {
@@ -217,14 +254,21 @@ async fn main() -> io::Result<()> {
 
     let (term_width, term_height) = renderer.get_size();
 
-    let mut app = app::App::new(
+    let mut app = match app::App::new(
         &config,
         cli.simulate,
         cli.night,
         cli.leaves,
         term_width,
         term_height,
-    );
+    ) {
+        Ok(app) => app,
+        Err(e) => {
+            renderer.cleanup()?;
+            eprintln!("\nError initializing application: {}\n", e);
+            std::process::exit(1);
+        }
+    };
 
     let result = tokio::select! {
         res = app.run(&mut renderer) => res,

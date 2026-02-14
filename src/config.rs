@@ -13,8 +13,47 @@ pub struct Config {
     pub hide_hud: bool,
     #[serde(default)]
     pub units: WeatherUnits,
-    #[serde(default)]
     pub silent: bool,
+    #[serde(default)]
+    pub weather: WeatherConfig,
+    #[serde(default)]
+    pub shell: ShellConfig,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ShellConfig {
+    #[serde(default)]
+    pub background_mode: bool,
+    pub shell_path: Option<String>,
+}
+
+impl Default for ShellConfig {
+    fn default() -> Self {
+        Self {
+            background_mode: false,
+            shell_path: None,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct WeatherConfig {
+    #[serde(default = "default_provider")]
+    pub provider: String,
+    pub api_key: Option<String>,
+}
+
+fn default_provider() -> String {
+    "open_meteo".to_string()
+}
+
+impl Default for WeatherConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_provider(),
+            api_key: None,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -234,6 +273,8 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             silent: false,
+            weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -252,6 +293,8 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             silent: false,
+            weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -270,6 +313,8 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             silent: false,
+            weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -288,6 +333,8 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             silent: false,
+            weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_err());
@@ -306,6 +353,8 @@ longitude = 0.0
             hide_hud: false,
             units: WeatherUnits::default(),
             silent: false,
+            weather: WeatherConfig::default(),
+            shell: ShellConfig::default(),
         };
         let result = config.validate();
         assert!(result.is_ok());

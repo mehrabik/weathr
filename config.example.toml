@@ -1,0 +1,51 @@
+# Example configuration file for weathr
+# Copy this to your config directory and customize as needed
+
+# Hide the HUD (Heads Up Display) with weather details
+hide_hud = false
+
+[location]
+# Location coordinates (overridden if auto = true)
+latitude = 40.7128
+longitude = -74.0060
+
+# Auto-detect location via IP (defaults to true if config missing)
+auto = false
+
+# Hide the location name in the UI
+hide = false
+
+[units]
+# Temperature unit: "celsius" or "fahrenheit"
+temperature = "celsius"
+
+# Wind speed unit: "kmh", "ms", "mph", or "kn"
+wind_speed = "kmh"
+
+# Precipitation unit: "mm" or "inch"
+precipitation = "mm"
+
+[weather]
+# Weather data provider: "open_meteo", "openweathermap", or "weatherapi"
+# Default: "open_meteo" (no API key required)
+provider = "open_meteo"
+
+# API key for the weather provider (required for openweathermap and weatherapi)
+# Uncomment and add your key when using openweathermap or weatherapi:
+# api_key = "your_api_key_here"
+
+# === Example configurations for different providers ===
+
+# Open-Meteo (default, no API key required):
+# [weather]
+# provider = "open_meteo"
+
+# OpenWeatherMap (requires API key from https://openweathermap.org/api):
+# [weather]
+# provider = "openweathermap"
+# api_key = "your_openweathermap_api_key"
+
+# WeatherAPI (requires API key from https://www.weatherapi.com/):
+# [weather]
+# provider = "weatherapi"
+# api_key = "your_weatherapi_key"

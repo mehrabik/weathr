@@ -4,7 +4,7 @@ use crate::error::TerminalError;
 use capabilities::TerminalCapabilities;
 use crossterm::{
     cursor, execute, queue,
-    style::{Color, Print, ResetColor, SetForegroundColor},
+    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::io::{self, BufWriter, IsTerminal, Stdout, Write};
@@ -16,6 +16,7 @@ const MIN_TERMINAL_HEIGHT: u16 = 20;
 struct Cell {
     character: char,
     color: Color,
+    bg_color: Color,
 }
 
 impl Default for Cell {
@@ -23,6 +24,7 @@ impl Default for Cell {
         Self {
             character: ' ',
             color: Color::Reset,
+            bg_color: Color::Reset,
         }
     }
 }
@@ -126,6 +128,7 @@ impl TerminalRenderer {
                             self.buffer[buffer_idx] = Cell {
                                 character: ch,
                                 color: adjusted_color,
+                                bg_color: Color::Reset,
                             };
                         }
                     }
@@ -156,6 +159,7 @@ impl TerminalRenderer {
                     self.buffer[buffer_idx] = Cell {
                         character: ch,
                         color: adjusted_color,
+                        bg_color: Color::Reset,
                     };
                 }
             }
@@ -170,6 +174,7 @@ impl TerminalRenderer {
                 self.buffer[buffer_idx] = Cell {
                     character: ch,
                     color: self.capabilities.adjust_color(color),
+                    bg_color: Color::Reset,
                 };
             }
         }
@@ -184,8 +189,57 @@ impl TerminalRenderer {
         Ok(())
     }
 
+    /// Writes a character with transparent background (only updates foreground color)
+    pub fn write_char_transparent(
+        &mut self,
+        x: u16,
+        y: u16,
+        ch: char,
+        color: Color,
+    ) -> io::Result<()> {
+        if x < self.width && y < self.height {
+            let buffer_idx = (y as usize) * (self.width as usize) + (x as usize);
+            if buffer_idx < self.buffer.len() {
+                let adjusted_color = self.capabilities.adjust_color(color);
+                self.buffer[buffer_idx].character = ch;
+                self.buffer[buffer_idx].color = adjusted_color;
+                // Preserve existing background color
+            }
+        }
+        Ok(())
+    }
+
+    /// Writes a full cell with both foreground and background colors
+    pub fn write_cell(
+        &mut self,
+        x: u16,
+        y: u16,
+        ch: char,
+        fg_color: Color,
+        bg_color: Color,
+    ) -> io::Result<()> {
+        if x < self.width && y < self.height {
+            let buffer_idx = (y as usize) * (self.width as usize) + (x as usize);
+            if buffer_idx < self.buffer.len() {
+                self.buffer[buffer_idx] = Cell {
+                    character: ch,
+                    color: self.capabilities.adjust_color(fg_color),
+                    bg_color: self.capabilities.adjust_color(bg_color),
+                };
+            }
+        }
+        Ok(())
+    }
+
+    /// Renders the cursor at the specified position
+    pub fn render_cursor(&mut self, x: u16, y: u16) -> io::Result<()> {
+        execute!(self.stdout, cursor::MoveTo(x, y), cursor::Show)?;
+        Ok(())
+    }
+
     pub fn flush(&mut self) -> io::Result<()> {
-        let mut current_color = Color::Reset;
+        let mut current_fg_color = Color::Reset;
+        let mut current_bg_color = Color::Reset;
         let mut last_pos: Option<(u16, u16)> = None;
 
         for y in 0..self.height {
@@ -205,9 +259,14 @@ impl TerminalRenderer {
                         queue!(self.stdout, cursor::MoveTo(x, y))?;
                     }
 
-                    if cell.color != current_color {
+                    if cell.color != current_fg_color {
                         queue!(self.stdout, SetForegroundColor(cell.color))?;
-                        current_color = cell.color;
+                        current_fg_color = cell.color;
+                    }
+
+                    if cell.bg_color != current_bg_color {
+                        queue!(self.stdout, SetBackgroundColor(cell.bg_color))?;
+                        current_bg_color = cell.bg_color;
                     }
 
                     queue!(self.stdout, Print(cell.character))?;
@@ -216,7 +275,7 @@ impl TerminalRenderer {
             }
         }
 
-        if current_color != Color::Reset {
+        if current_fg_color != Color::Reset || current_bg_color != Color::Reset {
             queue!(self.stdout, ResetColor)?;
         }
 
