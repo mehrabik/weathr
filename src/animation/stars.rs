@@ -122,9 +122,8 @@ impl StarSystem {
             renderer.render_char(star.x, star.y, ch, color)?;
         }
 
-        if let Some(ref star) = self.shooting_star
-            && star.active
-        {
+        if let Some(ref star) = self.shooting_star {
+            if star.active {
             let head_x = star.x as i16;
             let head_y = star.y as i16;
 
@@ -148,6 +147,7 @@ impl StarSystem {
                     let ch = if i == 1 { '+' } else { '.' };
                     renderer.render_char(trail_x as u16, trail_y as u16, ch, Color::White)?;
                 }
+            }
             }
         }
 

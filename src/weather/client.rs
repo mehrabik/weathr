@@ -35,10 +35,10 @@ impl WeatherClient {
     ) -> Result<WeatherData, WeatherError> {
         {
             let cache = self.cache.read().await;
-            if let Some(cached) = cache.as_ref()
-                && cached.fetched_at.elapsed() < self.cache_duration
-            {
-                return Ok(cached.data.clone());
+            if let Some(cached) = cache.as_ref() {
+                if cached.fetched_at.elapsed() < self.cache_duration {
+                    return Ok(cached.data.clone());
+                }
             }
         }
 
