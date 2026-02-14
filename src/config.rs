@@ -13,6 +13,7 @@ pub struct Config {
     pub hide_hud: bool,
     #[serde(default)]
     pub units: WeatherUnits,
+    #[serde(default)]
     pub silent: bool,
     #[serde(default)]
     pub weather: WeatherConfig,
