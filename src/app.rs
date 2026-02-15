@@ -66,6 +66,7 @@ pub struct App {
     shell_manager: Option<ShellManager>,
     background_mode: bool,
     prefix_key_pressed: bool,
+    shell_exited: bool, // Track if the shell process has exited
 }
 
 impl App {
@@ -210,6 +211,7 @@ impl App {
             shell_manager,
             background_mode,
             prefix_key_pressed: false,
+            shell_exited: false,
         })
     }
 
@@ -345,9 +347,10 @@ impl App {
                         }
                         Ok(_) => break, // No more data available
                         Err(e) => {
-                            // If PTY read fails (shell exited), exit gracefully
+                            // If PTY read fails (shell exited), mark for exit
                             if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
-                                break; // Stop trying to read, continue with exit
+                                self.shell_exited = true;
+                                break;
                             }
                             break; // For other errors, just stop reading this frame
                         }
@@ -356,13 +359,18 @@ impl App {
 
                 // Render shell on top of weather (ignore errors if shell has exited)
                 if let Err(e) = shell.render(renderer) {
-                    // If render fails due to PTY issues, it's okay - shell likely exited
+                    // If render fails due to PTY issues, mark shell as exited
                     if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
-                        // Continue without rendering shell
+                        self.shell_exited = true;
                     } else {
                         return Err(e); // Propagate other errors
                     }
                 }
+            }
+
+            // If shell has exited, exit the application
+            if self.shell_exited {
+                break;
             }
 
             renderer.flush()?;
@@ -452,6 +460,7 @@ impl App {
             if let Err(e) = shell.write_input(&bytes) {
                 // Error code 5 (Input/output error) means the PTY/shell has closed
                 if e.raw_os_error() == Some(5) || e.kind() == io::ErrorKind::BrokenPipe {
+                    self.shell_exited = true;
                     return Ok(true); // Exit gracefully
                 }
                 return Err(e); // Propagate other errors
