@@ -35,6 +35,7 @@ impl PtyHandler {
         cmd.env("PS1", "$ "); // Simple prompt to avoid complex shell configurations
         cmd.env("PROMPT_EOL_MARK", ""); // Disable zsh's partial line indicator (%)
         cmd.env("PROMPT_SP", ""); // Disable zsh's special prompt spacing
+        cmd.env("WEATHR_SHELL", "1"); // Mark that we're inside weathr to prevent recursion
 
         // Preserve essential environment variables
         if let Ok(home) = std::env::var("HOME") {
