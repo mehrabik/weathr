@@ -26,9 +26,10 @@ impl PtyHandler {
             })
             .map_err(|e| ShellError::PtyCreation(e.to_string()))?;
 
-        // Build the shell command with -i flag for interactive mode
+        // Build the shell command with -i and -l flags for interactive login shell
         let mut cmd = CommandBuilder::new(shell_path);
         cmd.arg("-i"); // Force interactive mode
+        cmd.arg("-l"); // Make it a login shell (loads profile, enables history)
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
         cmd.env("PS1", "$ "); // Simple prompt to avoid complex shell configurations
@@ -44,6 +45,24 @@ impl PtyHandler {
         }
         if let Ok(path) = std::env::var("PATH") {
             cmd.env("PATH", path);
+        }
+        if let Ok(shell) = std::env::var("SHELL") {
+            cmd.env("SHELL", shell);
+        }
+
+        // Preserve shell history configuration
+        if let Ok(histfile) = std::env::var("HISTFILE") {
+            cmd.env("HISTFILE", histfile);
+        }
+        if let Ok(histsize) = std::env::var("HISTSIZE") {
+            cmd.env("HISTSIZE", histsize);
+        }
+        if let Ok(savehist) = std::env::var("SAVEHIST") {
+            cmd.env("SAVEHIST", savehist);
+        }
+        // zsh history options
+        if let Ok(histfile) = std::env::var("ZDOTDIR") {
+            cmd.env("ZDOTDIR", histfile);
         }
 
         // Spawn the shell process
@@ -131,5 +150,21 @@ impl PtyHandler {
             .map_err(|e| ShellError::PtyCreation(format!("Failed to resize PTY: {}", e)))?;
 
         Ok(())
+    }
+
+    /// Sends exit command to the shell to allow it to save history
+    pub fn send_exit(&mut self) -> io::Result<()> {
+        // Send exit command followed by newline
+        let _ = self.write_input(b"exit\n");
+        // Give shell a moment to process and save history
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        Ok(())
+    }
+}
+
+impl Drop for PtyHandler {
+    fn drop(&mut self) {
+        // Try to send exit command to allow shell to save history
+        let _ = self.send_exit();
     }
 }
