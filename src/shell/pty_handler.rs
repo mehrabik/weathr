@@ -128,7 +128,14 @@ impl PtyHandler {
         // Try to receive data from the channel (non-blocking)
         match self.output_receiver.try_recv() {
             Ok(data) => Ok(data),
-            Err(_) => Ok(vec![]), // No data available or channel closed
+            Err(mpsc::error::TryRecvError::Empty) => Ok(vec![]), // No data available right now
+            Err(mpsc::error::TryRecvError::Disconnected) => {
+                // Channel closed - shell has exited
+                Err(io::Error::new(
+                    io::ErrorKind::BrokenPipe,
+                    "Shell process has exited",
+                ))
+            }
         }
     }
 
